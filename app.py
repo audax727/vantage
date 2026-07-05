@@ -31,7 +31,7 @@ load_dotenv()
 app = Flask(__name__)
 # Configuration
 DB_PATH = os.environ.get("DB_PATH", "vantage.db")
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_dev_secret_key_vantage_2024")
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS", "")
