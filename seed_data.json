@@ -1,0 +1,978 @@
+{
+  "products": [
+    {
+      "name": "Basmati Rice 5kg",
+      "category": "Groceries",
+      "cost_price": 350.0,
+      "sell_price": 420.0,
+      "end_stock": 24,
+      "threshold": 10,
+      "unit": "bag",
+      "sold_qty": 16,
+      "start_stock": 40
+    },
+    {
+      "name": "Toor Dal 1kg",
+      "category": "Groceries",
+      "cost_price": 110.0,
+      "sell_price": 140.0,
+      "end_stock": 48,
+      "threshold": 15,
+      "unit": "pack",
+      "sold_qty": 12,
+      "start_stock": 60
+    },
+    {
+      "name": "Sunflower Oil 1L",
+      "category": "Groceries",
+      "cost_price": 130.0,
+      "sell_price": 160.0,
+      "end_stock": 12,
+      "threshold": 10,
+      "unit": "bottle",
+      "sold_qty": 13,
+      "start_stock": 25
+    },
+    {
+      "name": "Tata Salt 1kg",
+      "category": "Groceries",
+      "cost_price": 18.0,
+      "sell_price": 25.0,
+      "end_stock": 82,
+      "threshold": 20,
+      "unit": "pack",
+      "sold_qty": 18,
+      "start_stock": 100
+    },
+    {
+      "name": "Colgate Toothpaste",
+      "category": "Personal Care",
+      "cost_price": 45.0,
+      "sell_price": 65.0,
+      "end_stock": 0,
+      "threshold": 10,
+      "unit": "pcs",
+      "sold_qty": 8,
+      "start_stock": 8
+    },
+    {
+      "name": "Parle-G Biscuits",
+      "category": "Snacks",
+      "cost_price": 8.0,
+      "sell_price": 12.0,
+      "end_stock": 121,
+      "threshold": 30,
+      "unit": "pack",
+      "sold_qty": 29,
+      "start_stock": 150
+    },
+    {
+      "name": "Amul Milk 1L",
+      "category": "Dairy",
+      "cost_price": 48.0,
+      "sell_price": 56.0,
+      "end_stock": 10,
+      "threshold": 15,
+      "unit": "pack",
+      "sold_qty": 5,
+      "start_stock": 15
+    },
+    {
+      "name": "Maggi Noodles",
+      "category": "Snacks",
+      "cost_price": 12.0,
+      "sell_price": 15.0,
+      "end_stock": 80,
+      "threshold": 20,
+      "unit": "pack",
+      "sold_qty": 10,
+      "start_stock": 90
+    },
+    {
+      "name": "Britannia Bread",
+      "category": "Bakery",
+      "cost_price": 35.0,
+      "sell_price": 42.0,
+      "end_stock": 12,
+      "threshold": 10,
+      "unit": "loaf",
+      "sold_qty": 8,
+      "start_stock": 20
+    },
+    {
+      "name": "Surf Excel 1kg",
+      "category": "Household",
+      "cost_price": 140.0,
+      "sell_price": 175.0,
+      "end_stock": 4,
+      "threshold": 10,
+      "unit": "pack",
+      "sold_qty": 8,
+      "start_stock": 12
+    },
+    {
+      "name": "Red Label Tea 250g",
+      "category": "Groceries",
+      "cost_price": 90.0,
+      "sell_price": 115.0,
+      "end_stock": 19,
+      "threshold": 10,
+      "unit": "pack",
+      "sold_qty": 11,
+      "start_stock": 30
+    },
+    {
+      "name": "Lifebuoy Soap",
+      "category": "Personal Care",
+      "cost_price": 20.0,
+      "sell_price": 30.0,
+      "end_stock": 59,
+      "threshold": 20,
+      "unit": "pcs",
+      "sold_qty": 21,
+      "start_stock": 80
+    },
+    {
+      "name": "Aashirvaad Atta 5kg",
+      "category": "Groceries",
+      "cost_price": 240.0,
+      "sell_price": 290.0,
+      "end_stock": 14,
+      "threshold": 10,
+      "unit": "bag",
+      "sold_qty": 11,
+      "start_stock": 25
+    },
+    {
+      "name": "Kurkure",
+      "category": "Snacks",
+      "cost_price": 10.0,
+      "sell_price": 15.0,
+      "end_stock": 60,
+      "threshold": 15,
+      "unit": "pack",
+      "sold_qty": 10,
+      "start_stock": 70
+    },
+    {
+      "name": "Harpic Toilet Cleaner",
+      "category": "Household",
+      "cost_price": 55.0,
+      "sell_price": 75.0,
+      "end_stock": 18,
+      "threshold": 10,
+      "unit": "bottle",
+      "sold_qty": 0,
+      "start_stock": 18
+    }
+  ],
+  "customers": [
+    [
+      "Ramesh Kumar",
+      "9876543210",
+      "ramesh@example.com"
+    ],
+    [
+      "Priya Sharma",
+      "9876500000",
+      "priya@example.com"
+    ],
+    [
+      "Amit Verma",
+      "9876511111",
+      "amit@example.com"
+    ],
+    [
+      "Sunita Reddy",
+      "9876522222",
+      "sunita@example.com"
+    ],
+    [
+      "Vikram Singh",
+      "9876533333",
+      "vikram@example.com"
+    ],
+    [
+      "Anjali Nair",
+      "9876544444",
+      "anjali@example.com"
+    ],
+    [
+      "Deepak Joshi",
+      "9876555555",
+      "deepak@example.com"
+    ],
+    [
+      "Kavita Iyer",
+      "9876566666",
+      "kavita@example.com"
+    ],
+    [
+      "Rahul Mehta",
+      "9876577777",
+      "rahul@example.com"
+    ],
+    [
+      "Neha Gupta",
+      "9876588888",
+      "neha@example.com"
+    ]
+  ],
+  "sales": [
+    {
+      "date": "2026-06-14 10:37",
+      "customer": "Priya Sharma",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Red Label Tea 250g",
+          "qty": 1
+        }
+      ],
+      "total": 115.0,
+      "paid": 115.0
+    },
+    {
+      "date": "2026-06-14 12:28",
+      "customer": "Rahul Mehta",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Basmati Rice 5kg",
+          "qty": 1
+        },
+        {
+          "name": "Toor Dal 1kg",
+          "qty": 3
+        }
+      ],
+      "total": 840.0,
+      "paid": 470.36
+    },
+    {
+      "date": "2026-06-15 10:05",
+      "customer": "Anjali Nair",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Red Label Tea 250g",
+          "qty": 1
+        }
+      ],
+      "total": 115.0,
+      "paid": 44.4
+    },
+    {
+      "date": "2026-06-15 15:05",
+      "customer": "Kavita Iyer",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Toor Dal 1kg",
+          "qty": 3
+        },
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 2
+        }
+      ],
+      "total": 480.0,
+      "paid": 480.0
+    },
+    {
+      "date": "2026-06-16 10:24",
+      "customer": "Vikram Singh",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Sunflower Oil 1L",
+          "qty": 1
+        },
+        {
+          "name": "Aashirvaad Atta 5kg",
+          "qty": 1
+        },
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        }
+      ],
+      "total": 486.0,
+      "paid": 486.0
+    },
+    {
+      "date": "2026-06-16 10:38",
+      "customer": "Vikram Singh",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 1
+        },
+        {
+          "name": "Amul Milk 1L",
+          "qty": 2
+        }
+      ],
+      "total": 142.0,
+      "paid": 142.0
+    },
+    {
+      "date": "2026-06-17 12:52",
+      "customer": "Anjali Nair",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Red Label Tea 250g",
+          "qty": 3
+        },
+        {
+          "name": "Sunflower Oil 1L",
+          "qty": 3
+        },
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        }
+      ],
+      "total": 861.0,
+      "paid": 861.0
+    },
+    {
+      "date": "2026-06-17 20:20",
+      "customer": "Sunita Reddy",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 2
+        }
+      ],
+      "total": 60.0,
+      "paid": 60.0
+    },
+    {
+      "date": "2026-06-18 20:37",
+      "customer": "Sunita Reddy",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Kurkure",
+          "qty": 2
+        },
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 1
+        }
+      ],
+      "total": 42.0,
+      "paid": 42.0
+    },
+    {
+      "date": "2026-06-18 11:40",
+      "customer": "Priya Sharma",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 1
+        },
+        {
+          "name": "Kurkure",
+          "qty": 1
+        }
+      ],
+      "total": 27.0,
+      "paid": 27.0
+    },
+    {
+      "date": "2026-06-19 20:07",
+      "customer": "Rahul Mehta",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        },
+        {
+          "name": "Maggi Noodles",
+          "qty": 2
+        }
+      ],
+      "total": 66.0,
+      "paid": 66.0
+    },
+    {
+      "date": "2026-06-19 13:32",
+      "customer": "Ramesh Kumar",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Red Label Tea 250g",
+          "qty": 2
+        },
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 2
+        }
+      ],
+      "total": 254.0,
+      "paid": 254.0
+    },
+    {
+      "date": "2026-06-20 17:58",
+      "customer": "Anjali Nair",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 3
+        },
+        {
+          "name": "Aashirvaad Atta 5kg",
+          "qty": 3
+        },
+        {
+          "name": "Kurkure",
+          "qty": 3
+        }
+      ],
+      "total": 990.0,
+      "paid": 990.0
+    },
+    {
+      "date": "2026-06-20 13:15",
+      "customer": "Walk-in",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Maggi Noodles",
+          "qty": 2
+        }
+      ],
+      "total": 30.0,
+      "paid": 30.0
+    },
+    {
+      "date": "2026-06-20 17:49",
+      "customer": "Priya Sharma",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 3
+        }
+      ],
+      "total": 75.0,
+      "paid": 75.0
+    },
+    {
+      "date": "2026-06-21 12:59",
+      "customer": "Rahul Mehta",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Britannia Bread",
+          "qty": 3
+        }
+      ],
+      "total": 126.0,
+      "paid": 126.0
+    },
+    {
+      "date": "2026-06-21 12:14",
+      "customer": "Kavita Iyer",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Surf Excel 1kg",
+          "qty": 2
+        },
+        {
+          "name": "Red Label Tea 250g",
+          "qty": 3
+        }
+      ],
+      "total": 695.0,
+      "paid": 695.0
+    },
+    {
+      "date": "2026-06-21 12:04",
+      "customer": "Neha Gupta",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        }
+      ],
+      "total": 36.0,
+      "paid": 11.82
+    },
+    {
+      "date": "2026-06-22 18:30",
+      "customer": "Amit Verma",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Basmati Rice 5kg",
+          "qty": 3
+        },
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 2
+        }
+      ],
+      "total": 1310.0,
+      "paid": 1310.0
+    },
+    {
+      "date": "2026-06-23 09:43",
+      "customer": "Deepak Joshi",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Sunflower Oil 1L",
+          "qty": 1
+        },
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 3
+        }
+      ],
+      "total": 250.0,
+      "paid": 250.0
+    },
+    {
+      "date": "2026-06-23 15:11",
+      "customer": "Priya Sharma",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Basmati Rice 5kg",
+          "qty": 3
+        }
+      ],
+      "total": 1260.0,
+      "paid": 473.87
+    },
+    {
+      "date": "2026-06-24 09:05",
+      "customer": "Walk-in",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 2
+        },
+        {
+          "name": "Kurkure",
+          "qty": 3
+        }
+      ],
+      "total": 95.0,
+      "paid": 95.0
+    },
+    {
+      "date": "2026-06-24 09:24",
+      "customer": "Deepak Joshi",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Sunflower Oil 1L",
+          "qty": 2
+        }
+      ],
+      "total": 320.0,
+      "paid": 320.0
+    },
+    {
+      "date": "2026-06-25 18:47",
+      "customer": "Kavita Iyer",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Surf Excel 1kg",
+          "qty": 3
+        },
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 3
+        }
+      ],
+      "total": 600.0,
+      "paid": 251.21
+    },
+    {
+      "date": "2026-06-25 11:04",
+      "customer": "Rahul Mehta",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Basmati Rice 5kg",
+          "qty": 2
+        },
+        {
+          "name": "Colgate Toothpaste",
+          "qty": 3
+        }
+      ],
+      "total": 1035.0,
+      "paid": 708.26
+    },
+    {
+      "date": "2026-06-26 19:37",
+      "customer": "Neha Gupta",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        }
+      ],
+      "total": 36.0,
+      "paid": 0.0
+    },
+    {
+      "date": "2026-06-27 10:00",
+      "customer": "Vikram Singh",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Britannia Bread",
+          "qty": 2
+        },
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 1
+        },
+        {
+          "name": "Colgate Toothpaste",
+          "qty": 2
+        }
+      ],
+      "total": 239.0,
+      "paid": 239.0
+    },
+    {
+      "date": "2026-06-27 14:56",
+      "customer": "Walk-in",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Maggi Noodles",
+          "qty": 1
+        }
+      ],
+      "total": 15.0,
+      "paid": 15.0
+    },
+    {
+      "date": "2026-06-27 18:51",
+      "customer": "Kavita Iyer",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Aashirvaad Atta 5kg",
+          "qty": 2
+        }
+      ],
+      "total": 580.0,
+      "paid": 580.0
+    },
+    {
+      "date": "2026-06-27 13:38",
+      "customer": "Priya Sharma",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Basmati Rice 5kg",
+          "qty": 3
+        },
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 1
+        },
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 1
+        }
+      ],
+      "total": 1315.0,
+      "paid": 1315.0
+    },
+    {
+      "date": "2026-06-27 09:05",
+      "customer": "Vikram Singh",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Surf Excel 1kg",
+          "qty": 1
+        }
+      ],
+      "total": 175.0,
+      "paid": 175.0
+    },
+    {
+      "date": "2026-06-28 15:35",
+      "customer": "Amit Verma",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Basmati Rice 5kg",
+          "qty": 1
+        },
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        }
+      ],
+      "total": 456.0,
+      "paid": 456.0
+    },
+    {
+      "date": "2026-06-28 17:09",
+      "customer": "Rahul Mehta",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Toor Dal 1kg",
+          "qty": 3
+        }
+      ],
+      "total": 420.0,
+      "paid": 0.0
+    },
+    {
+      "date": "2026-06-28 17:56",
+      "customer": "Sunita Reddy",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Toor Dal 1kg",
+          "qty": 1
+        },
+        {
+          "name": "Colgate Toothpaste",
+          "qty": 2
+        }
+      ],
+      "total": 270.0,
+      "paid": 270.0
+    },
+    {
+      "date": "2026-06-28 20:59",
+      "customer": "Amit Verma",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Red Label Tea 250g",
+          "qty": 1
+        },
+        {
+          "name": "Kurkure",
+          "qty": 1
+        }
+      ],
+      "total": 130.0,
+      "paid": 130.0
+    },
+    {
+      "date": "2026-06-29 16:14",
+      "customer": "Priya Sharma",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 1
+        },
+        {
+          "name": "Aashirvaad Atta 5kg",
+          "qty": 2
+        }
+      ],
+      "total": 610.0,
+      "paid": 610.0
+    },
+    {
+      "date": "2026-06-29 13:55",
+      "customer": "Sunita Reddy",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 2
+        }
+      ],
+      "total": 60.0,
+      "paid": 33.84
+    },
+    {
+      "date": "2026-06-30 11:37",
+      "customer": "Ramesh Kumar",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        },
+        {
+          "name": "Amul Milk 1L",
+          "qty": 3
+        }
+      ],
+      "total": 204.0,
+      "paid": 0.0
+    },
+    {
+      "date": "2026-07-01 10:24",
+      "customer": "Anjali Nair",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Toor Dal 1kg",
+          "qty": 2
+        }
+      ],
+      "total": 280.0,
+      "paid": 280.0
+    },
+    {
+      "date": "2026-07-01 19:58",
+      "customer": "Sunita Reddy",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Basmati Rice 5kg",
+          "qty": 3
+        },
+        {
+          "name": "Sunflower Oil 1L",
+          "qty": 3
+        },
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 3
+        }
+      ],
+      "total": 1776.0,
+      "paid": 1776.0
+    },
+    {
+      "date": "2026-07-02 11:12",
+      "customer": "Anjali Nair",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Surf Excel 1kg",
+          "qty": 2
+        },
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 3
+        },
+        {
+          "name": "Colgate Toothpaste",
+          "qty": 1
+        }
+      ],
+      "total": 505.0,
+      "paid": 505.0
+    },
+    {
+      "date": "2026-07-02 13:18",
+      "customer": "Vikram Singh",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Britannia Bread",
+          "qty": 3
+        },
+        {
+          "name": "Parle-G Biscuits",
+          "qty": 1
+        }
+      ],
+      "total": 138.0,
+      "paid": 138.0
+    },
+    {
+      "date": "2026-07-03 20:10",
+      "customer": "Sunita Reddy",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 2
+        },
+        {
+          "name": "Maggi Noodles",
+          "qty": 2
+        }
+      ],
+      "total": 90.0,
+      "paid": 90.0
+    },
+    {
+      "date": "2026-07-03 12:43",
+      "customer": "Anjali Nair",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Tata Salt 1kg",
+          "qty": 3
+        }
+      ],
+      "total": 75.0,
+      "paid": 0.0
+    },
+    {
+      "date": "2026-07-04 10:29",
+      "customer": "Walk-in",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 1
+        }
+      ],
+      "total": 30.0,
+      "paid": 30.0
+    },
+    {
+      "date": "2026-07-04 10:49",
+      "customer": "Deepak Joshi",
+      "channel": "online",
+      "items": [
+        {
+          "name": "Aashirvaad Atta 5kg",
+          "qty": 3
+        },
+        {
+          "name": "Maggi Noodles",
+          "qty": 3
+        }
+      ],
+      "total": 915.0,
+      "paid": 514.62
+    },
+    {
+      "date": "2026-07-04 16:42",
+      "customer": "Rahul Mehta",
+      "channel": "in_store",
+      "items": [
+        {
+          "name": "Sunflower Oil 1L",
+          "qty": 3
+        },
+        {
+          "name": "Lifebuoy Soap",
+          "qty": 3
+        }
+      ],
+      "total": 570.0,
+      "paid": 364.42
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Inventory — Vantage{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+  <div>
+    <div class="page-eyebrow">Inventory</div>
+    <h1 class="page-title">Products</h1>
+    <p class="page-subtitle">Stock levels update automatically with every sale.</p>
+  </div>
+  <button class="btn btn-primary" onclick="openAddModal()">+ Add product</button>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Name</th><th>Category</th><th>Cost</th><th>Price</th><th>Stock</th><th>Reorder at</th><th></th></tr>
+  </thead>
+  <tbody id="productRows"></tbody>
+</table>
+
+<div class="modal-backdrop" id="productModal">
+  <div class="modal">
+    <h3>Add product</h3>
+    <form id="productForm">
+      <div class="field"><label>Name</label><input name="name" required></div>
+      <div class="field"><label>Category</label><input name="category"></div>
+      <div class="grid grid-2">
+        <div class="field"><label>Cost price</label><input name="cost_price" type="number" step="0.01" required></div>
+        <div class="field"><label>Sell price</label><input name="sell_price" type="number" step="0.01" required></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="field"><label>Current stock</label><input name="current_stock" type="number" step="0.01" required></div>
+        <div class="field"><label>Reorder threshold</label><input name="reorder_threshold" type="number" step="0.01" value="5"></div>
+      </div>
+      <div class="field"><label>Unit</label><input name="unit" value="pcs"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save product</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="restockModal">
+  <div class="modal">
+    <h3>Restock</h3>
+    <form id="restockForm">
+      <input type="hidden" name="product_id">
+      <div class="field"><label>Quantity to add</label><input name="qty" type="number" step="0.01" required></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('restockModal').classList.remove('show')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Restock</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAddModal() { document.getElementById('productModal').classList.add('show'); }
+function closeAddModal() { document.getElementById('productModal').classList.remove('show'); }
+
+async function loadProducts() {
+  const products = await api('/api/products');
+  const rows = document.getElementById('productRows');
+  if (!products.length) {
+    rows.innerHTML = `<tr><td colspan="7"><div class="empty-state">No products yet. Add your first one to get started.</div></td></tr>`;
+    return;
+  }
+  rows.innerHTML = products.map(p => `
+    <tr>
+      <td>${p.name}</td>
+      <td>${p.category || '—'}</td>
+      <td class="num">₹${p.cost_price}</td>
+      <td class="num">₹${p.sell_price}</td>
+      <td class="num" style="${p.current_stock <= p.reorder_threshold ? 'color:#fe1e34; font-weight:600;' : ''}">${p.current_stock} ${p.unit}</td>
+      <td class="num">${p.reorder_threshold}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openRestock(${p.id})">Restock</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('productForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = Object.fromEntries(fd.entries());
+  try {
+    await api('/api/products', { method: 'POST', body: payload });
+    closeAddModal();
+    e.target.reset();
+    toast('Product added');
+    loadProducts();
+  } catch (err) { toast(err.message); }
+});
+
+function openRestock(id) {
+  document.querySelector('#restockForm [name=product_id]').value = id;
+  document.getElementById('restockModal').classList.add('show');
+}
+document.getElementById('restockForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const id = fd.get('product_id');
+  try {
+    await api(`/api/products/${id}/restock`, { method: 'POST', body: { qty: parseFloat(fd.get('qty')) } });
+    document.getElementById('restockModal').classList.remove('show');
+    toast('Stock updated');
+    loadProducts();
+  } catch (err) { toast(err.message); }
+});
+
+async function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  try {
+    await api(`/api/products/${id}`, { method: 'DELETE' });
+    toast('Product deleted');
+    loadProducts();
+  } catch (err) { toast(err.message); }
+}
+
+loadProducts();
+</script>
+{% endblock %}

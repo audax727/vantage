@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Record Sale — Vantage{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-eyebrow">Transactions</div>
+  <h1 class="page-title">Record a sale</h1>
+  <p class="page-subtitle">One sale updates inventory, ledger, and analytics automatically.</p>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="field">
+      <label>Customer (optional — leave blank for walk-in)</label>
+      <input type="text" id="customerInput" list="customerList" placeholder="Type name or select...">
+      <datalist id="customerList"></datalist>
+    </div>
+
+    <div id="lineItems"></div>
+    <button class="btn btn-outline btn-sm" onclick="addLineItem()">+ Add item</button>
+
+    <div class="field" style="margin-top:18px;">
+      <label>Amount paid now</label>
+      <input type="number" id="amountPaid" step="0.01" placeholder="0.00">
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+      <div class="stat-label">Total: <span class="num" id="runningTotal" style="font-size:16px; color:#fcfcfc; font-weight:600;">₹0.00</span></div>
+      <button class="btn btn-primary" onclick="submitSale()">Record sale</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="stat-label" style="margin-bottom:14px;">Recent sales</div>
+    <div id="recentSales"><p style="color:#525252; font-size:14px;">Loading…</p></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let products = [];
+let customers = [];
+let lineCount = 0;
+
+function lineItemRow(idx) {
+  const options = products.map(p => `<option value="${p.id}" data-price="${p.sell_price}" data-stock="${p.current_stock}">${p.name} (₹${p.sell_price}, ${p.current_stock} in stock)</option>`).join('');
+  return `
+    <div class="line-item-row" data-idx="${idx}">
+      <div class="field" style="margin-bottom:0"><label>Product</label>
+        <select onchange="updateTotal()" class="line-product">${options}</select>
+      </div>
+      <div class="field" style="margin-bottom:0"><label>Qty</label>
+        <input type="number" step="0.01" value="1" class="line-qty" oninput="updateTotal()">
+      </div>
+      <div class="field" style="margin-bottom:0"><label>Line total</label>
+        <input type="text" class="line-total" disabled>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeLine(${idx})">×</button>
+    </div>`;
+}
+
+function addLineItem() {
+  if (!products.length) { toast('Add products first'); return; }
+  const container = document.getElementById('lineItems');
+  const div = document.createElement('div');
+  div.innerHTML = lineItemRow(lineCount);
+  container.appendChild(div.firstElementChild);
+  lineCount++;
+  updateTotal();
+}
+
+function removeLine(idx) {
+  document.querySelector(`.line-item-row[data-idx="${idx}"]`).remove();
+  updateTotal();
+}
+
+function updateTotal() {
+  let total = 0;
+  document.querySelectorAll('.line-item-row').forEach(row => {
+    const select = row.querySelector('.line-product');
+    const qty = parseFloat(row.querySelector('.line-qty').value) || 0;
+    const price = parseFloat(select.selectedOptions[0]?.dataset.price || 0);
+    const lineTotal = qty * price;
+    row.querySelector('.line-total').value = '₹' + lineTotal.toFixed(2);
+    total += lineTotal;
+  });
+  document.getElementById('runningTotal').textContent = '₹' + total.toFixed(2);
+  return total;
+}
+
+async function submitSale() {
+  const items = [];
+  document.querySelectorAll('.line-item-row').forEach(row => {
+    const productId = parseInt(row.querySelector('.line-product').value);
+    const qty = parseFloat(row.querySelector('.line-qty').value);
+    if (productId && qty > 0) items.push({ product_id: productId, qty });
+  });
+  if (!items.length) { toast('Add at least one item'); return; }
+
+  const customerInput = document.getElementById('customerInput').value.trim();
+  let customerId = null;
+  if (customerInput) {
+    const existing = customers.find(c => c.name.toLowerCase() === customerInput.toLowerCase());
+    if (existing) {
+      customerId = existing.id;
+    } else {
+      try {
+        const res = await api('/api/customers', { method: 'POST', body: { name: customerInput } });
+        customerId = res.id;
+      } catch (err) { toast('Error creating customer: ' + err.message); return; }
+    }
+  }
+
+  const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+
+  try {
+    const result = await api('/api/sales', {
+      method: 'POST',
+      body: { customer_id: customerId, items, amount_paid: amountPaid }
+    });
+    let msg = `Sale recorded — ₹${result.total_amount.toFixed(2)} total`;
+    if (result.due > 0) msg += `, ₹${result.due.toFixed(2)} due`;
+    toast(msg);
+    if (result.reorder_flags.length) {
+      setTimeout(() => toast('Reorder needed: ' + result.reorder_flags.join(', ')), 1500);
+    }
+    document.getElementById('lineItems').innerHTML = '';
+    document.getElementById('amountPaid').value = '';
+    document.getElementById('customerInput').value = '';
+    lineCount = 0;
+    updateTotal();
+    loadRecentSales();
+    loadProducts();
+    loadCustomers();
+  } catch (err) { toast(err.message); }
+}
+
+async function loadProducts() {
+  products = await api('/api/products');
+}
+
+async function loadCustomers() {
+  customers = await api('/api/customers');
+  const datalist = document.getElementById('customerList');
+  datalist.innerHTML = customers.map(c => `<option value="${c.name}"></option>`).join('');
+}
+
+async function loadRecentSales() {
+  const sales = await api('/api/sales');
+  const el = document.getElementById('recentSales');
+  el.innerHTML = sales.length ? sales.slice(0, 8).map(s => `
+    <div class="reorder-item">
+      <span>${s.customer_name || 'Walk-in'} — ₹${s.total_amount.toFixed(2)}</span>
+      <span class="badge badge-${s.payment_status}">${s.payment_status}</span>
+    </div>
+  `).join('') : '<p style="color:#525252; font-size:14px;">No sales yet.</p>';
+}
+
+(async function init() {
+  await loadProducts();
+  await loadCustomers();
+  await loadRecentSales();
+  addLineItem();
+})();
+</script>
+{% endblock %}

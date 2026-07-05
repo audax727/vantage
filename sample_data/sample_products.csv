@@ -1,0 +1,11 @@
+name,category,cost_price,sell_price,current_stock,reorder_threshold,unit
+Basmati Rice 5kg,Groceries,350,420,40,10,bag
+Toor Dal 1kg,Groceries,110,140,60,15,pack
+Sunflower Oil 1L,Groceries,130,160,25,10,bottle
+Tata Salt 1kg,Groceries,18,25,100,20,pack
+Colgate Toothpaste,Personal Care,45,65,8,10,pcs
+Parle-G Biscuits,Snacks,8,12,150,30,pack
+Amul Milk 1L,Dairy,48,56,5,15,pack
+Maggi Noodles,Snacks,12,15,90,20,pack
+Britannia Bread,Bakery,35,42,20,10,loaf
+Surf Excel 1kg,Household,140,175,12,10,pack

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Vantage{% endblock %}
+{% block content %}
+
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+  <div data-reveal="up">
+    <div class="page-eyebrow">Overview</div>
+    <h1 class="page-title">{{ user['shop_name'] }}</h1>
+    <p class="page-subtitle">Live snapshot — stock, dues, and revenue right now.</p>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;" data-reveal="up" data-delay="1">
+    <select id="reportType" class="btn" style="height:36px; width:auto; padding:0 32px 0 12px; font-size:13px;">
+      <option value="weekly">Weekly Report</option>
+      <option value="monthly">Monthly Report</option>
+    </select>
+    <button id="generateReportBtn" class="btn btn-outline" onclick="generatePDF()">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Generate
+    </button>
+  </div>
+</div>
+
+<!-- ── STAT CARDS ───────────────────────────────────────── -->
+<div class="grid grid-4" id="statGrid" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="stat-label">Revenue</div>
+    <div class="stat-value" id="statRevenue">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Profit</div>
+    <div class="stat-value" id="statProfit">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Outstanding dues</div>
+    <div class="stat-value" id="statDues">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Repeat customer rate</div>
+    <div class="stat-value" id="statRepeat">—</div>
+  </div>
+</div>
+
+<!-- ── INTELLIGENCE PANELS ──────────────────────────────── -->
+<div class="grid grid-2" style="margin-bottom:24px;">
+  <div class="card" data-reveal="up" data-delay="1">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+      <div style="width:6px; height:6px; border-radius:50%; background:var(--red);"></div>
+      <span class="stat-label" style="margin:0;">Reorder now — ranked by velocity</span>
+    </div>
+    <div id="reorderList">
+      <p style="color:var(--iron); font-size:13px;">Loading…</p>
+    </div>
+  </div>
+
+  <div class="card" data-reveal="up" data-delay="2">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+      <div style="width:6px; height:6px; border-radius:50%; background:var(--graphite);"></div>
+      <span class="stat-label" style="margin:0;">At-risk customers (45+ days silent)</span>
+    </div>
+    <div id="atRiskList">
+      <p style="color:var(--iron); font-size:13px;">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── SEED CARD ─────────────────────────────────────────── -->
+<div class="card" id="seedCard" style="text-align:center; padding:40px 24px;" data-reveal="up" data-delay="3">
+  <p style="color:var(--iron); margin-bottom:16px; font-size:13px; max-width:360px; margin-inline:auto;">
+    New here? Load sample products, customers, and sales to explore Vantage.
+  </p>
+  <button class="btn btn-outline" id="seedBtn">Load sample data</button>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Dashboard JS ─────────────────────────────────────── */
+async function loadDashboard() {
+  const a = await api('/api/analytics');
+
+  /* Stat values */
+  document.getElementById('statRevenue').textContent = '₹' + a.revenue.toLocaleString('en-IN');
+  document.getElementById('statProfit').textContent  = '₹' + a.profit.toLocaleString('en-IN');
+  document.getElementById('statDues').textContent    = '₹' + a.outstanding_dues.toLocaleString('en-IN');
+  document.getElementById('statRepeat').textContent  = a.repeat_rate + '%';
+
+  /* Animate stat values in */
+  document.querySelectorAll('.stat-value').forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(12px)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)';
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    }, i * 80);
+  });
+
+  /* At-risk list */
+  const riskEl = document.getElementById('atRiskList');
+  riskEl.innerHTML = a.at_risk_customers.length
+    ? a.at_risk_customers.map(c => `
+        <div class="reorder-item">
+          <span style="font-size:13px; color:var(--bone)">${c.name}</span>
+        </div>`).join('')
+    : '<p style="color:var(--iron); font-size:13px;">No at-risk customers right now.</p>';
+
+  /* Reorder list */
+  const reorder = await api('/api/reorder');
+  const reorderEl = document.getElementById('reorderList');
+  reorderEl.innerHTML = reorder.length
+    ? reorder.map(r => `
+        <div class="reorder-item">
+          <span style="font-size:13px; color:var(--bone)">${r.name}
+            <span style="color:var(--iron); font-size:12px; margin-left:6px;">${r.current_stock} left</span>
+          </span>
+          <span class="velocity-tag">${r.velocity}/day</span>
+        </div>`).join('')
+    : '<p style="color:var(--iron); font-size:13px;">Nothing needs reordering.</p>';
+}
+
+/* Seed data */
+document.getElementById('seedBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('seedBtn');
+  btn.textContent = 'Loading…';
+  btn.disabled = true;
+  try {
+    await api('/api/seed-demo-data', { method: 'POST' });
+    toast('Sample data loaded');
+    loadDashboard();
+    document.getElementById('seedCard').style.display = 'none';
+  } catch (e) {
+    toast(e.message);
+    btn.textContent = 'Load sample data';
+    btn.disabled = false;
+  }
+});
+
+/* PDF generation */
+async function generatePDF() {
+  const btn     = document.getElementById('generateReportBtn');
+  const typeEl  = document.getElementById('reportType');
+  const type    = typeEl.value;
+  const days    = type === 'monthly' ? 30 : 7;
+  const orig    = btn.innerHTML;
+
+  btn.innerHTML = '<span style="opacity:0.6">Analyzing…</span>';
+  btn.disabled  = true;
+  typeEl.disabled = true;
+
+  try {
+    const aiReport = await api('/api/analytics/ai_report?days=' + days);
+    btn.innerHTML = '<span style="opacity:0.6">Generating PDF…</span>';
+
+    const res = await fetch('/api/analytics/report/generate?days=' + days, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(aiReport)
+    });
+
+    if (!res.ok) throw new Error('Failed to generate PDF');
+
+    const blob = await res.blob();
+    const url  = window.URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = type === 'monthly' ? 'Monthly_Report.pdf' : 'Weekly_Report.pdf';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast('Report downloaded');
+  } catch (e) {
+    console.error(e);
+    toast('Error generating report');
+  } finally {
+    btn.innerHTML  = orig;
+    btn.disabled   = false;
+    typeEl.disabled = false;
+  }
+}
+
+loadDashboard();
+</script>
+{% endblock %}

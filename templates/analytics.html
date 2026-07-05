@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block title %}Analytics — Vantage{% endblock %}
+{% block content %}
+
+<div class="page-header" data-reveal="up">
+  <div class="page-eyebrow">Insight</div>
+  <h1 class="page-title">AI Business Advisor</h1>
+  <p class="page-subtitle">Profit, demand, and intelligent recommendations — derived from your actual sales data.</p>
+</div>
+
+<!-- ── HEALTH + ACTIONS ──────────────────────────────────── -->
+<div class="grid grid-2" style="margin-bottom:24px;">
+  <div class="card" style="display:flex; align-items:center; justify-content:center; flex-direction:column; padding:32px 24px;" data-reveal="up">
+    <div class="stat-label">Business Health Score</div>
+    <div style="position:relative; width:128px; height:128px; margin:20px 0;">
+      <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform:rotate(-90deg);">
+        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none" stroke="#262525" stroke-width="3"/>
+        <path id="healthCircle"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none" stroke="#fe1e34" stroke-width="3" stroke-dasharray="0, 100"
+              style="transition: stroke-dasharray 1.2s cubic-bezier(0.16,1,0.3,1);"/>
+      </svg>
+      <div id="aiHealthScore"
+           style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                  font-size:28px; font-weight:700; letter-spacing:-1px; color:var(--bone);">
+        --
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-reveal="up" data-delay="1">
+    <div class="section-title" style="margin-top:0;">Priority Actions</div>
+    <div id="aiActions" style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+      <div class="empty-state">Loading AI analysis…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── KEY INSIGHTS ──────────────────────────────────────── -->
+<div class="section-title" data-reveal="up">Key Insights</div>
+<div id="aiInsights" class="card" style="margin-bottom:24px; line-height:1.7;" data-reveal="up" data-delay="1">
+  <div class="empty-state">Loading AI insights…</div>
+</div>
+
+<!-- ── KPI GRID ──────────────────────────────────────────── -->
+<div class="grid grid-4" style="margin-bottom:24px;">
+  <div class="card"><div class="stat-label">Revenue</div><div class="stat-value num" id="aRevenue">—</div></div>
+  <div class="card"><div class="stat-label">Cost of goods</div><div class="stat-value num" id="aCost">—</div></div>
+  <div class="card"><div class="stat-label">Profit</div><div class="stat-value num" id="aProfit">—</div></div>
+  <div class="card"><div class="stat-label">Outstanding dues</div><div class="stat-value num" id="aDues">—</div></div>
+</div>
+
+<!-- ── TABLES ────────────────────────────────────────────── -->
+<div class="grid grid-2">
+  <div data-reveal="up">
+    <div class="section-title">Top-selling products</div>
+    <div style="border:1px solid var(--smoke); border-radius:var(--r-card); overflow:hidden;">
+      <table>
+        <thead><tr><th>Product</th><th>Units sold</th><th>Revenue</th></tr></thead>
+        <tbody id="topProducts"></tbody>
+      </table>
+    </div>
+  </div>
+  <div data-reveal="up" data-delay="1">
+    <div class="section-title">Dead stock (unsold 30+ days)</div>
+    <div style="border:1px solid var(--smoke); border-radius:var(--r-card); overflow:hidden;">
+      <table>
+        <thead><tr><th>Product</th><th>Stock sitting idle</th></tr></thead>
+        <tbody id="deadStock"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── CHAT WIDGET ───────────────────────────────────────── -->
+<div id="chatContainer" style="position:fixed; bottom:24px; right:24px; z-index:1000; display:flex; flex-direction:column; align-items:flex-end;">
+  <!-- Full Window -->
+  <div id="chatWidget" style="
+    width:360px; max-width:calc(100vw - 48px);
+    background:var(--charcoal); border-radius:var(--r-card);
+    box-shadow:rgba(255,255,255,0.06) 0px 2px 5px inset, 0 20px 48px rgba(0,0,0,0.6);
+    border:1px solid var(--smoke);
+    display:none; flex-direction:column; overflow:hidden;
+    margin-bottom:16px; transform-origin:bottom right;
+    animation: chatIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  ">
+    <!-- Header -->
+    <div onclick="toggleChat()" style="
+      background:var(--smoke); color:var(--bone);
+      border-bottom:1px solid var(--graphite);
+      padding:14px 16px; font-size:13px; font-weight:500;
+      display:flex; justify-content:space-between; align-items:center;
+      cursor:pointer; user-select:none; letter-spacing:-0.1px;
+      transition: background 0.15s; font-family:var(--f-sans); font-style:normal;
+    " onmouseenter="this.style.background='var(--graphite)'" onmouseleave="this.style.background='var(--smoke)'">
+      <span style="display:flex; align-items:center; gap:8px;">
+        Ask the AI Advisor
+      </span>
+      <span style="font-size:11px; color:var(--iron); letter-spacing:0.5px;">CLOSE ✕</span>
+    </div>
+
+    <!-- Body -->
+    <div id="chatBody" style="display:flex; flex-direction:column;">
+      <div id="chatHistory" style="
+        height:320px; overflow-y:auto; padding:16px;
+        background:var(--void); display:flex; flex-direction:column; gap:10px;
+        font-size:13px; line-height:1.5; font-family:var(--f-sans); font-style:normal;
+      ">
+        <div class="chat-bubble-ai">
+          Hello! I'm your AI business advisor. Ask me anything about your revenue, inventory, or ledger.
+        </div>
+      </div>
+      <form id="chatForm" onsubmit="handleChat(event)" style="
+        display:flex; gap:8px; padding:10px 12px;
+        border-top:1px solid var(--smoke);
+        background:var(--charcoal);
+      ">
+        <input type="text" id="chatInput" placeholder="How can I improve profits?"
+               style="flex:1; height:34px; font-size:13px; border-radius:var(--r-btn); font-family:var(--f-sans);">
+        <button type="submit" class="btn btn-primary btn-sm" id="chatBtn" style="flex-shrink:0;">Ask</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Circular FAB -->
+  <button id="chatFab" onclick="toggleChat()" class="chat-fab">
+    <span class="chat-fab-v" style="font-family: var(--f-serif); font-style: italic; font-size: 22px; flex-shrink: 0;">V</span>
+    <span class="chat-fab-text">Ask the AI Advisor</span>
+  </button>
+</div>
+
+<style>
+  .chat-bubble-ai {
+    align-self: flex-start;
+    background: var(--charcoal);
+    border: 1px solid var(--smoke);
+    color: var(--ash);
+    padding: 10px 14px;
+    border-radius: 2px 8px 8px 8px;
+    max-width: 85%;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .chat-bubble-user {
+    align-self: flex-end;
+    background: var(--red);
+    color: var(--bone);
+    padding: 10px 14px;
+    border-radius: 8px 2px 8px 8px;
+    max-width: 80%;
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 500;
+  }
+  @keyframes dot-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(254,30,52,0.4); }
+    50%       { box-shadow: 0 0 0 5px rgba(254,30,52,0); }
+  }
+  /* Action urgency cards */
+  .action-card {
+    padding: 14px 16px;
+    border-radius: var(--r-card);
+    border: 1px solid var(--smoke);
+    background: var(--void);
+    transition: border-color 0.2s;
+  }
+  .action-card:hover { border-color: var(--graphite); }
+  .action-card.urgent { border-color: rgba(254,30,52,0.4); }
+  .action-card.urgent:hover { border-color: var(--red); }
+  .action-title { font-weight: 500; font-size: 13px; color: var(--bone); margin-bottom: 4px; }
+  .action-desc  { font-size: 12px; color: var(--iron); line-height: 1.5; }
+  .action-title.high { color: var(--red); }
+  
+  .chat-fab {
+    width: 56px; height: 56px; border-radius: 28px;
+    background: var(--charcoal); border: 1px solid var(--smoke);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; overflow: hidden; white-space: nowrap;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), padding 0.3s, background 0.3s, border-color 0.3s;
+    color: var(--bone); font-size: 13px; font-weight: 500; font-family: var(--f-sans);
+    padding: 0; outline: none;
+    animation: fab-radar 2.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+  .chat-fab:hover {
+    width: 190px; padding: 0 20px; justify-content: flex-start; gap: 12px;
+    background: var(--smoke); border-color: var(--graphite);
+    animation-play-state: paused;
+  }
+  @keyframes fab-radar {
+    0% { box-shadow: rgba(255,255,255,0.06) 0px 2px 5px inset, 0 10px 24px rgba(0,0,0,0.4), 0 0 0 0px rgba(128,128,128,0.3); }
+    100% { box-shadow: rgba(255,255,255,0.06) 0px 2px 5px inset, 0 10px 24px rgba(0,0,0,0.4), 0 0 0 16px rgba(128,128,128,0); }
+  }
+  .chat-fab-text { max-width: 0; opacity: 0; transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s; pointer-events: none; overflow: hidden; display: inline-block; vertical-align: middle; }
+  .chat-fab:hover .chat-fab-text { max-width: 150px; opacity: 1; transition-delay: 0.1s; }
+  .chat-fab-icon {
+    width: 12px; height: 12px; border-radius: 50%; background: var(--red);
+    animation: dot-pulse 2s ease-in-out infinite; flex-shrink: 0;
+  }
+  @keyframes chatIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadAnalytics() {
+  const a = await api('/api/analytics');
+  document.getElementById('aRevenue').textContent = '₹' + a.revenue.toLocaleString('en-IN');
+  document.getElementById('aCost').textContent    = '₹' + a.cost.toLocaleString('en-IN');
+  document.getElementById('aProfit').textContent  = '₹' + a.profit.toLocaleString('en-IN');
+  document.getElementById('aDues').textContent    = '₹' + a.outstanding_dues.toLocaleString('en-IN');
+
+  /* Animate stat values */
+  document.querySelectorAll('#aRevenue, #aCost, #aProfit, #aDues').forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(10px)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1)';
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    }, i * 100);
+  });
+
+  document.getElementById('topProducts').innerHTML = a.top_products.length
+    ? a.top_products.map(p => `<tr>
+        <td>${p.name}</td>
+        <td class="num" style="color:var(--ash)">${p.units_sold}</td>
+        <td class="num">₹${p.revenue.toFixed(2)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="3"><div class="empty-state">No sales recorded yet.</div></td></tr>`;
+
+  document.getElementById('deadStock').innerHTML = a.dead_stock.length
+    ? a.dead_stock.map(p => `<tr>
+        <td>${p.name}</td>
+        <td class="num" style="color:var(--iron)">${p.current_stock}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="2"><div class="empty-state">No dead stock — everything's moving.</div></td></tr>`;
+}
+
+async function loadAIReport() {
+  try {
+    const report = await api('/api/analytics/ai_report');
+
+    /* Health score ring */
+    document.getElementById('aiHealthScore').textContent = report.health_score;
+    const ringColor = report.health_score > 70 ? '#22c55e' : 'var(--red)';
+    document.getElementById('healthCircle').setAttribute('stroke', ringColor);
+    document.getElementById('aiHealthScore').style.color = ringColor;
+    
+    setTimeout(() => {
+      document.getElementById('healthCircle').setAttribute('stroke-dasharray', `${report.health_score}, 100`);
+    }, 200);
+
+    /* Priority actions */
+    document.getElementById('aiActions').innerHTML = report.priority_actions.map(action => `
+      <div class="action-card ${action.urgency === 'high' ? 'urgent' : ''}">
+        <div class="action-title ${action.urgency === 'high' ? 'high' : ''}">${action.title}</div>
+        <div class="action-desc">${action.description}</div>
+      </div>`).join('');
+
+    /* Key insights */
+    document.getElementById('aiInsights').innerHTML = `
+      <ul style="margin:0; padding-left:20px; color:var(--ash); font-size:13px;">
+        ${report.insights.map(insight => `<li style="margin-bottom:8px;">${insight}</li>`).join('')}
+      </ul>`;
+  } catch (e) {
+    document.getElementById('aiActions').innerHTML  = `<div class="empty-state">AI analysis unavailable.</div>`;
+    document.getElementById('aiInsights').innerHTML = `<div class="empty-state">AI analysis unavailable.</div>`;
+  }
+}
+
+/* Chat */
+async function handleChat(e) {
+  e.preventDefault();
+  const input   = document.getElementById('chatInput');
+  const btn     = document.getElementById('chatBtn');
+  const history = document.getElementById('chatHistory');
+  const q       = input.value.trim();
+  if (!q) return;
+
+  input.value = '';
+  btn.disabled = true;
+
+  history.innerHTML += `<div class="chat-bubble-user">${q}</div>`;
+  history.scrollTop = history.scrollHeight;
+
+  try {
+    const res = await api('/api/analytics/ai_chat', {
+      method: 'POST',
+      body: JSON.stringify({ question: q })
+    });
+    history.innerHTML += `<div class="chat-bubble-ai">${res.answer.replace(/\n/g, '<br>')}</div>`;
+  } catch (err) {
+    history.innerHTML += `<div class="chat-bubble-ai" style="color:var(--red); border-color:rgba(254,30,52,0.3);">Sorry, I encountered an error.</div>`;
+  }
+
+  btn.disabled = false;
+  history.scrollTop = history.scrollHeight;
+}
+
+function toggleChat() {
+  const widget = document.getElementById('chatWidget');
+  const fab = document.getElementById('chatFab');
+  const hidden = widget.style.display === 'none' || widget.style.display === '';
+  
+  if (hidden) {
+    widget.style.display = 'flex';
+    fab.style.display = 'none';
+  } else {
+    widget.style.display = 'none';
+    fab.style.display = 'flex';
+  }
+}
+
+loadAnalytics();
+loadAIReport();
+</script>
+{% endblock %}

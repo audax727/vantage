@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in — Vantage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+
+    <!-- Brand -->
+    <div class="auth-brand">
+      <span class="brand-mark">V</span>
+      <span class="auth-brand-name">Vantage</span>
+    </div>
+
+    <h1 class="auth-title">Welcome back.</h1>
+    <p class="auth-subtitle">Sign in to run your shop's operations.</p>
+
+    <div id="error" class="auth-error"></div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" required placeholder="you@shop.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" required placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" style="width:100%; height:44px; font-size:13px; letter-spacing:0.06em; text-transform:uppercase;" type="submit">
+        Sign in →
+      </button>
+    </form>
+
+
+
+    <p class="auth-footer">Don't have an account? <a href="{{ url_for('signup_page') }}">Create one</a></p>
+  </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errBox = document.getElementById('error');
+  errBox.classList.remove('show');
+  const fd = new FormData(e.target);
+  const payload = Object.fromEntries(fd.entries());
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    window.location.href = data.redirect;
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.classList.add('show');
+  }
+});
+</script>
+</body>
+</html>

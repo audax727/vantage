@@ -1,0 +1,8 @@
+customer_name,product_name,qty,amount_paid,payment_status,channel,date
+Ramesh Kumar,Basmati Rice 5kg,2,840,paid,in_store,2026-06-01
+Priya Sharma,Toor Dal 1kg,3,200,partial,in_store,2026-06-02
+Amit Verma,Amul Milk 1L,5,0,credit,in_store,2026-06-03
+Sunita Reddy,Maggi Noodles,10,150,paid,online,2026-06-10
+Vikram Singh,Surf Excel 1kg,1,175,paid,in_store,2026-06-12
+Ramesh Kumar,Parle-G Biscuits,20,240,paid,in_store,2026-06-15
+Priya Sharma,Colgate Toothpaste,2,130,paid,online,2026-06-18
