@@ -5,3 +5,4 @@ Werkzeug==3.0.3
 groq
 requests==2.32.3
 reportlab
+gunicorn
