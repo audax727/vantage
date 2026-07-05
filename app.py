@@ -167,6 +167,8 @@ def init_db():
     db.commit()
     db.close()
 
+# Initialize DB unconditionally so it runs on Gunicorn startup
+init_db()
 
 # ----------------------------------------------------------------------------
 # Auth helpers
