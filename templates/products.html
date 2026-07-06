@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Inventory — Vantage{% endblock %}
 {% block content %}
-<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
   <div>
     <div class="page-eyebrow">Inventory</div>
     <h1 class="page-title">Products</h1>
@@ -10,12 +10,14 @@
   <button class="btn btn-primary" onclick="openAddModal()">+ Add product</button>
 </div>
 
+<div class="table-wrap">
 <table>
   <thead>
     <tr><th>Name</th><th>Category</th><th>Cost</th><th>Price</th><th>Stock</th><th>Reorder at</th><th></th></tr>
   </thead>
   <tbody id="productRows"></tbody>
 </table>
+</div>
 
 <div class="modal-backdrop" id="productModal">
   <div class="modal">
