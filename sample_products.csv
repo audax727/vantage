@@ -1,0 +1,7 @@
+name,category,cost_price,sell_price,current_stock,reorder_threshold,unit
+Premium Leather Wallet,Accessories,450,1200,50,10,pcs
+Wireless Earbuds Pro,Electronics,1200,2999,120,20,pcs
+Organic Cotton T-Shirt,Apparel,250,799,300,50,pcs
+Stainless Steel Water Bottle,Home,150,499,85,15,pcs
+Noise Cancelling Headphones,Electronics,3500,8999,40,5,pcs
+Aviator Sunglasses,Accessories,300,999,60,10,pcs

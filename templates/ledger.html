@@ -24,10 +24,16 @@
   }
 </style>
 
-<div class="page-header">
-  <div class="page-eyebrow">Credit &amp; Dues</div>
-  <h1 class="page-title">Ledger</h1>
-  <p class="page-subtitle">Every unpaid or partially paid sale lands here automatically.</p>
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
+  <div>
+    <div class="page-eyebrow">Credit &amp; Dues</div>
+    <h1 class="page-title">Ledger</h1>
+    <p class="page-subtitle">Every unpaid or partially paid sale lands here automatically.</p>
+  </div>
+  <button class="btn btn-outline" onclick="sendBatchReminders()">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-right:6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+    Send Batch Reminders
+  </button>
 </div>
 
 <div class="table-wrap">
@@ -72,6 +78,7 @@ async function loadLedger() {
       <td><span class="badge badge-${e.status}">${e.status}</span></td>
       <td style="display: flex; gap: 8px;">
         <button class="btn btn-outline btn-sm" onclick="openCollect(${e.id})">Collect</button>
+        <a href="/api/ledger/${e.customer_id}/statement" target="_blank" class="btn btn-outline btn-sm">Statement</a>
       </td>
     </tr>
   `).join('');
@@ -94,7 +101,13 @@ document.getElementById('collectForm').addEventListener('submit', async (e) => {
   } catch (err) { toast(err.message); }
 });
 
-
+async function sendBatchReminders() {
+  if (!confirm("Send reminders for all dues over 30 days old?")) return;
+  try {
+    const res = await api('/api/ledger/batch-remind', { method: 'POST' });
+    toast(`Sent ${res.count} reminders`);
+  } catch(err) { toast(err.message); }
+}
 
 loadLedger();
 </script>

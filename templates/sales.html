@@ -1,10 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Record Sale — Vantage{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div class="page-eyebrow">Transactions</div>
-  <h1 class="page-title">Record a sale</h1>
-  <p class="page-subtitle">One sale updates inventory, ledger, and analytics automatically.</p>
+  <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+    <div>
+      <div class="page-eyebrow">Transactions</div>
+      <h1 class="page-title" id="pageTitle">Record a sale</h1>
+      <p class="page-subtitle" id="pageSubtitle">One sale updates inventory, ledger, and analytics automatically.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label style="font-size:13px; color:var(--iron);">B2B / Wholesale Quote</label>
+      <label class="toggle-switch" style="position:relative; display:inline-block; width:44px; height:24px;">
+        <input type="checkbox" id="b2bToggle" onchange="toggleB2bMode()" style="opacity:0; width:0; height:0;">
+        <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:var(--smoke); transition:.2s; border-radius:24px;"></span>
+      </label>
+    </div>
+  </div>
 </div>
 
 <div class="grid grid-2">
@@ -18,14 +28,19 @@
     <div id="lineItems"></div>
     <button class="btn btn-outline btn-sm" onclick="addLineItem()">+ Add item</button>
 
-    <div class="field" style="margin-top:18px;">
+    <div class="field" style="margin-top:18px;" id="discountFieldContainer" style="display:none;">
+      <label>Discount % (Applies to all items)</label>
+      <input type="number" id="discountPct" step="0.1" placeholder="0.0" oninput="updateTotal()">
+    </div>
+
+    <div class="field" style="margin-top:18px;" id="amountPaidContainer">
       <label>Amount paid now</label>
       <input type="number" id="amountPaid" step="0.01" placeholder="0.00">
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
       <div class="stat-label">Total: <span class="num" id="runningTotal" style="font-size:16px; color:#fcfcfc; font-weight:600;">₹0.00</span></div>
-      <button class="btn btn-primary" onclick="submitSale()">Record sale</button>
+      <button class="btn btn-primary" id="submitBtn" onclick="submitSale()">Record sale</button>
     </div>
   </div>
 
@@ -84,8 +99,24 @@ function updateTotal() {
     row.querySelector('.line-total').value = '₹' + lineTotal.toFixed(2);
     total += lineTotal;
   });
+  
+  const discountPct = parseFloat(document.getElementById('discountPct').value) || 0;
+  if (discountPct > 0) {
+    total = total - (total * (discountPct / 100));
+  }
+  
   document.getElementById('runningTotal').textContent = '₹' + total.toFixed(2);
   return total;
+}
+
+function toggleB2bMode() {
+  const isB2b = document.getElementById('b2bToggle').checked;
+  document.getElementById('pageTitle').textContent = isB2b ? "Build Quotation" : "Record a sale";
+  document.getElementById('pageSubtitle').textContent = isB2b ? "Draft a quote for bulk orders. Stock will not be deducted yet." : "One sale updates inventory, ledger, and analytics automatically.";
+  document.getElementById('submitBtn').textContent = isB2b ? "Save & Download Quote" : "Record sale";
+  document.getElementById('amountPaidContainer').style.display = isB2b ? 'none' : 'block';
+  document.getElementById('discountFieldContainer').style.display = isB2b ? 'block' : 'none';
+  document.querySelector('#customerInput').placeholder = isB2b ? "Required for quotations..." : "Type name or select...";
 }
 
 async function submitSale() {
@@ -97,8 +128,15 @@ async function submitSale() {
   });
   if (!items.length) { toast('Add at least one item'); return; }
 
+  const isB2b = document.getElementById('b2bToggle').checked;
   const customerInput = document.getElementById('customerInput').value.trim();
   let customerId = null;
+  
+  if (isB2b && !customerInput) {
+    toast('Customer name is required for quotations');
+    return;
+  }
+
   if (customerInput) {
     const existing = customers.find(c => c.name.toLowerCase() === customerInput.toLowerCase());
     if (existing) {
@@ -111,28 +149,71 @@ async function submitSale() {
     }
   }
 
-  const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
-
-  try {
-    const result = await api('/api/sales', {
-      method: 'POST',
-      body: { customer_id: customerId, items, amount_paid: amountPaid }
+  if (isB2b) {
+    // Quotation Flow
+    let subtotal = 0;
+    const quoteItems = [];
+    document.querySelectorAll('.line-item-row').forEach(row => {
+      const select = row.querySelector('.line-product');
+      const qty = parseFloat(row.querySelector('.line-qty').value);
+      const price = parseFloat(select.selectedOptions[0]?.dataset.price || 0);
+      const name = select.selectedOptions[0]?.text.split(' (')[0];
+      if (select.value && qty > 0) {
+        const lineTotal = qty * price;
+        subtotal += lineTotal;
+        quoteItems.push({ product_id: parseInt(select.value), name, qty, unit: 'pcs', unit_price: price, line_total: lineTotal });
+      }
     });
-    let msg = `Sale recorded — ₹${result.total_amount.toFixed(2)} total`;
-    if (result.due > 0) msg += `, ₹${result.due.toFixed(2)} due`;
-    toast(msg);
-    if (result.reorder_flags.length) {
-      setTimeout(() => toast('Reorder needed: ' + result.reorder_flags.join(', ')), 1500);
-    }
-    document.getElementById('lineItems').innerHTML = '';
-    document.getElementById('amountPaid').value = '';
-    document.getElementById('customerInput').value = '';
-    lineCount = 0;
-    updateTotal();
-    loadRecentSales();
-    loadProducts();
-    loadCustomers();
-  } catch (err) { toast(err.message); }
+    const discountPct = parseFloat(document.getElementById('discountPct').value) || 0;
+    const totalAmount = subtotal - (subtotal * discountPct / 100);
+    
+    try {
+      const result = await api('/api/quotations', {
+        method: 'POST',
+        body: { customer_id: customerId, customer_name: customerInput, items: quoteItems, subtotal, discount_pct: discountPct, total_amount: totalAmount }
+      });
+      
+      // Download PDF
+      const a = document.createElement('a');
+      a.href = `/api/quotations/${result.id}/pdf`;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      
+      toast(`Quotation saved and downloaded`);
+      resetForm();
+    } catch (err) { toast(err.message); }
+    
+  } else {
+    // Normal Sale Flow
+    const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+    try {
+      const result = await api('/api/sales', {
+        method: 'POST',
+        body: { customer_id: customerId, items, amount_paid: amountPaid }
+      });
+      let msg = `Sale recorded — ₹${result.total_amount.toFixed(2)} total`;
+      if (result.due > 0) msg += `, ₹${result.due.toFixed(2)} due`;
+      toast(msg);
+      if (result.reorder_flags && result.reorder_flags.length) {
+        setTimeout(() => toast('Reorder needed: ' + result.reorder_flags.join(', ')), 1500);
+      }
+      resetForm();
+      loadRecentSales();
+      loadProducts();
+      loadCustomers();
+    } catch (err) { toast(err.message); }
+  }
+}
+
+function resetForm() {
+  document.getElementById('lineItems').innerHTML = '';
+  document.getElementById('amountPaid').value = '';
+  document.getElementById('discountPct').value = '';
+  document.getElementById('customerInput').value = '';
+  lineCount = 0;
+  updateTotal();
 }
 
 async function loadProducts() {

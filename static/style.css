@@ -650,9 +650,9 @@ select {
   font-weight: 400; letter-spacing: 0.5px; text-transform: uppercase;
   display: inline-flex; align-items: center; gap: 5px; border: 1px solid;
 }
-.badge-paid, .badge-settled { background: var(--smoke); color: var(--ash); border-color: var(--graphite); }
-.badge-partial, .badge-credit, .badge-open { background: rgba(254,30,52,0.07); color: var(--red); border-color: var(--red); }
-.badge-outline { background: transparent; color: var(--ash); border-color: var(--graphite); }
+.badge-paid, .badge-settled, .badge-accepted { background: var(--smoke); color: var(--ash); border-color: var(--graphite); }
+.badge-partial, .badge-credit, .badge-open, .badge-declined { background: rgba(254,30,52,0.07); color: var(--red); border-color: var(--red); }
+.badge-outline, .badge-pending { background: transparent; color: var(--ash); border-color: var(--graphite); }
 
 /* ─── MODALS ─────────────────────────────────────────────── */
 .modal-backdrop {
@@ -695,6 +695,12 @@ select {
 .velocity-tag { font-family: var(--f-mono); font-size: 11px; color: var(--bone); background: var(--smoke); padding: 2px 7px; border-radius: var(--r-badge); border: 1px solid var(--graphite); }
 .line-items { border: 1px solid var(--graphite); border-radius: var(--r-card); padding: 16px; margin-bottom: 16px; background: var(--void); }
 .line-item-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 12px; }
+
+/* Toggle Switch */
+.toggle-switch input:checked + .slider { background-color: var(--red); }
+.toggle-switch .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .2s; border-radius: 50%; }
+.toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+
 @media (max-width: 600px) {
   .line-item-row { grid-template-columns: 1fr 1fr; }
   .line-item-row > *:last-child { grid-column: span 2; justify-self: end; }

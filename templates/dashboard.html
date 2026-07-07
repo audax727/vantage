@@ -63,12 +63,24 @@
   </div>
 </div>
 
-<!-- ── SEED CARD ─────────────────────────────────────────── -->
-<div class="card" id="seedCard" style="text-align:center; padding:40px 24px;" data-reveal="up" data-delay="3">
-  <p style="color:var(--iron); margin-bottom:16px; font-size:13px; max-width:360px; margin-inline:auto;">
-    New here? Load sample products, customers, and sales to explore Vantage.
-  </p>
-  <button class="btn btn-outline" id="seedBtn">Load sample data</button>
+<!-- ── SEED & IMPORT CARDS ───────────────────────────────── -->
+<div class="grid grid-2">
+  <div class="card" id="seedCard" style="text-align:center; padding:40px 24px;" data-reveal="up" data-delay="3">
+    <p style="color:var(--iron); margin-bottom:16px; font-size:13px; max-width:360px; margin-inline:auto;">
+      New here? Load sample products, customers, and sales to explore Vantage.
+    </p>
+    <button class="btn btn-outline" id="seedBtn">Load sample data</button>
+  </div>
+
+  <div class="card" id="importExportCard" style="text-align:center; padding:40px 24px;" data-reveal="up" data-delay="4">
+    <p style="color:var(--iron); margin-bottom:16px; font-size:13px; max-width:360px; margin-inline:auto;">
+      Bulk manage your inventory and backup your data with CSV import/export.
+    </p>
+    <div style="display: flex; gap: 8px; justify-content: center;">
+      <button class="btn btn-outline" id="importBtn">Import CSV</button>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+  </div>
 </div>
 
 {% endblock %}
@@ -179,6 +191,40 @@ async function generatePDF() {
     typeEl.disabled = false;
   }
 }
+
+/* CSV Import */
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('csvFileInput').click();
+});
+
+document.getElementById('csvFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('importBtn');
+  const orig = btn.textContent;
+  btn.textContent = 'Importing...';
+  btn.disabled = true;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/import/products', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Import failed');
+    toast('Products imported successfully');
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+    e.target.value = ''; // Reset input
+  }
+});
 
 loadDashboard();
 </script>

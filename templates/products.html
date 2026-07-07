@@ -10,6 +10,21 @@
   <button class="btn btn-primary" onclick="openAddModal()">+ Add product</button>
 </div>
 
+<div id="reorderSection" style="display:none; margin-bottom: 32px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:16px;">
+    <h3 class="section-title" style="margin:0">Reorder Needed</h3>
+    <button class="btn btn-outline btn-sm" onclick="openPoModal()">Generate Purchase Order</button>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Product</th><th>Current Stock</th><th>Threshold</th><th>7-Day Velocity</th><th>Suggested Order (14 Days)</th></tr>
+    </thead>
+    <tbody id="reorderRows"></tbody>
+  </table>
+  </div>
+</div>
+
 <div class="table-wrap">
 <table>
   <thead>
@@ -55,6 +70,25 @@
     </form>
   </div>
 </div>
+
+<div class="modal-backdrop" id="poModal">
+  <div class="modal">
+    <h3>Generate Purchase Order</h3>
+    <form id="poForm">
+      <div class="field"><label>Supplier Name</label><input name="supplier_name" placeholder="E.g., Metro Wholesale" required></div>
+      <div class="field"><label>Supplier Contact (Phone/Email)</label><input name="supplier_contact"></div>
+      
+      <div style="max-height: 200px; overflow-y: auto; margin-bottom:16px; border:1px solid var(--smoke); border-radius:var(--r-card); padding:8px;" id="poItemsContainer">
+        <!-- PO items populated via JS -->
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('poModal').classList.remove('show')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Download PO</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -64,6 +98,7 @@ function closeAddModal() { document.getElementById('productModal').classList.rem
 
 async function loadProducts() {
   const products = await api('/api/products');
+  productsData = products;
   const rows = document.getElementById('productRows');
   if (!products.length) {
     rows.innerHTML = `<tr><td colspan="7"><div class="empty-state">No products yet. Add your first one to get started.</div></td></tr>`;
@@ -123,6 +158,116 @@ async function deleteProduct(id) {
   } catch (err) { toast(err.message); }
 }
 
-loadProducts();
+let reorderItemsData = [];
+
+async function loadReorder() {
+  const items = await api('/api/reorder');
+  reorderItemsData = items;
+  const section = document.getElementById('reorderSection');
+  const rows = document.getElementById('reorderRows');
+  
+  if (!items.length) {
+    section.style.display = 'none';
+    return;
+  }
+  
+  section.style.display = 'block';
+  rows.innerHTML = items.map(p => {
+    const suggested = Math.ceil(p.velocity * 14); // 14 days of buffer
+    return `
+      <tr>
+        <td>${p.name}</td>
+        <td class="num" style="color:#fe1e34; font-weight:600;">${p.current_stock}</td>
+        <td class="num">${p.reorder_threshold}</td>
+        <td class="num">${p.velocity}/day</td>
+        <td class="num"><strong>${suggested > 0 ? suggested : 10}</strong></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openPoModal() {
+  const container = document.getElementById('poItemsContainer');
+  container.innerHTML = reorderItemsData.map((p, idx) => {
+    const suggested = Math.ceil(p.velocity * 14);
+    const defaultQty = suggested > 0 ? suggested : 10;
+    // Look up cost price from full product list
+    const prod = productsData.find(x => x.id === p.id);
+    const cost = prod ? prod.cost_price : 0;
+    const unit = prod ? prod.unit : 'pcs';
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;">
+        <div style="flex:1; font-size:13px;">${p.name}</div>
+        <input type="hidden" name="po_item_id_${idx}" value="${p.id}">
+        <input type="hidden" name="po_item_name_${idx}" value="${p.name}">
+        <input type="hidden" name="po_item_cost_${idx}" value="${cost}">
+        <input type="hidden" name="po_item_unit_${idx}" value="${unit}">
+        <div class="field" style="margin-bottom:0; width:100px;">
+          <input type="number" name="po_item_qty_${idx}" value="${defaultQty}" style="height:30px; font-size:12px;">
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('poModal').classList.add('show');
+}
+
+document.getElementById('poForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const items = [];
+  reorderItemsData.forEach((p, idx) => {
+    const qty = parseFloat(fd.get(`po_item_qty_${idx}`));
+    if (qty > 0) {
+      items.push({
+        product_id: parseInt(fd.get(`po_item_id_${idx}`)),
+        name: fd.get(`po_item_name_${idx}`),
+        qty: qty,
+        cost_price: parseFloat(fd.get(`po_item_cost_${idx}`)),
+        unit: fd.get(`po_item_unit_${idx}`)
+      });
+    }
+  });
+  
+  if (!items.length) { toast("No items to order"); return; }
+  
+  try {
+    const payload = {
+      supplier_name: fd.get('supplier_name'),
+      supplier_contact: fd.get('supplier_contact'),
+      items: items
+    };
+    
+    const res = await fetch('/api/procurement/po', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) throw new Error("Failed to generate PO");
+    
+    // Trigger download
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `PurchaseOrder_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    document.getElementById('poModal').classList.remove('show');
+    toast("Purchase Order downloaded");
+    
+  } catch (err) { toast(err.message); }
+});
+
+let productsData = [];
+async function loadAll() {
+  await loadProducts();
+  await loadReorder();
+}
+
+loadAll();
 </script>
 {% endblock %}
