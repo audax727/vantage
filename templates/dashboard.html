@@ -2,14 +2,16 @@
 {% block title %}Dashboard — Vantage{% endblock %}
 {% block content %}
 
-<div class="page-header" style="position: relative; min-height: 45vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; margin: -24px -24px 32px -24px; padding: 64px 32px; border-bottom: 1px solid var(--smoke); background: var(--charcoal);">
-  
-  <div style="position: relative; z-index: 10; max-width: 600px;" data-reveal="up">
-    <div class="page-eyebrow" style="color: var(--red);">Overview</div>
-    <h1 class="page-title" style="font-size: clamp(2.5rem, 5vw, 4rem); letter-spacing: -0.04em; margin-bottom: 16px; line-height: 1.1;">{{ user['shop_name'] }}</h1>
-    <p class="page-subtitle" style="font-size: 1.1rem; color: var(--bone); max-width: 480px; margin-bottom: 32px;">Live snapshot — stock, dues, and revenue right now. Scroll to explore your metrics.</p>
+<section id="heroSection" style="position: relative; margin: -24px -24px 32px -24px; height: 350vh; display: flex; flex-direction: column; align-items: center; overflow: hidden; background: var(--charcoal); color: var(--bone);">
+  <div style="position: sticky; top: 20vh; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; z-index: 10;">
+    <h1 class="page-title" style="font-size: clamp(3rem, 8vw, 6rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; color: var(--bone);">
+      Intelligent <br /> Retail <br /> Management
+    </h1>
+    <p class="page-subtitle" style="font-size: 1.25rem; font-weight: 500; color: var(--iron); max-width: 600px;">
+      Live snapshot — stock, dues, and revenue right now. Scroll to explore your metrics.
+    </p>
     
-    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;" data-reveal="up" data-delay="1">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top: 32px; justify-content: center;" data-reveal="up" data-delay="1">
       <select id="reportType" class="btn" style="height:44px; width:auto; padding:0 32px 0 16px; font-size:14px; background:var(--void); border-color:var(--smoke);">
         <option value="weekly">Weekly Report</option>
         <option value="monthly">Monthly Report</option>
@@ -23,12 +25,25 @@
 
   <!-- Skiper19 Animated SVG Path -->
   <svg width="1278" height="2319" viewBox="0 0 1278 2319" fill="none" overflow="visible" xmlns="http://www.w3.org/2000/svg" 
-       style="position: absolute; right: -25%; top: -150px; z-index: 0; opacity: 0.15; width: 1000px; height: auto; pointer-events: none;">
+       style="position: absolute; right: -40%; top: 0; z-index: 0; width: auto; height: 100%; pointer-events: none;">
     <path id="heroLinePath" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.5"
       d="M876.605 394.131C788.982 335.917 696.198 358.139 691.836 416.303C685.453 501.424 853.722 498.43 941.95 409.714C1016.1 335.156 1008.64 186.907 906.167 142.846C807.014 100.212 712.699 198.494 789.049 245.127C889.053 306.207 986.062 116.979 840.548 43.3233C743.932 -5.58141 678.027 57.1682 672.279 112.188C666.53 167.208 712.538 172.943 736.353 163.088C760.167 153.234 764.14 120.924 746.651 93.3868C717.461 47.4252 638.894 77.8642 601.018 116.979C568.164 150.908 557 201.079 576.467 246.924C593.342 286.664 630.24 310.55 671.68 302.614C756.114 286.446 729.747 206.546 681.86 186.442C630.54 164.898 492 209.318 495.026 287.644C496.837 334.494 518.402 366.466 582.455 367.287C680.013 368.538 771.538 299.456 898.634 292.434C1007.02 286.446 1192.67 309.384 1242.36 382.258C1266.99 418.39 1273.65 443.108 1247.75 474.477C1217.32 511.33 1149.4 511.259 1096.84 466.093C1044.29 420.928 1029.14 380.576 1033.97 324.172C1038.31 273.428 1069.55 228.986 1117.2 216.384C1152.2 207.128 1188.29 213.629 1194.45 245.127C1201.49 281.062 1132.22 280.104 1100.44 272.673C1065.32 264.464 1044.22 234.837 1032.77 201.413C1019.29 162.061 1029.71 131.126 1056.44 100.965C1086.19 67.4032 1143.96 54.5526 1175.78 86.1513C1207.02 117.17 1186.81 143.379 1156.22 166.691C1112.57 199.959 1052.57 186.238 999.784 155.164C957.312 130.164 899.171 63.7054 931.284 26.3214C952.068 2.12513 996.288 3.87363 1007.22 43.58C1018.15 83.2749 1003.56 122.644 975.969 163.376C948.377 204.107 907.272 255.122 913.558 321.045C919.727 385.734 990.968 497.068 1063.84 503.35C1111.46 507.456 1166.79 511.984 1175.68 464.527C1191.52 379.956 1101.26 334.985 1030.29 377.017C971.109 412.064 956.297 483.647 953.797 561.655C947.587 755.413 1197.56 941.828 936.039 1140.66C745.771 1285.32 321.926 950.737 134.536 1202.19C-6.68295 1391.68 -53.4837 1655.38 131.935 1760.5C478.381 1956.91 1124.19 1515 1201.28 1997.83C1273.66 2451.23 100.805 1864.7 303.794 2668.89"
       stroke="var(--red)" stroke-width="20" style="transition: stroke-dashoffset 0.1s ease-out;" />
   </svg>
-</div>
+
+  <div style="width: 100%; border-radius: 2rem; background: var(--void); padding: 4rem 1rem; color: var(--bone); transform: translateY(200vh); text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: 0 -20px 40px rgba(0,0,0,0.5);">
+    <h1 style="font-size: clamp(3rem, 15vw, 16vw); font-weight: bold; line-height: 0.9; letter-spacing: -0.05em; color: var(--red);">
+      {{ user['shop_name'] }}
+    </h1>
+    <div style="margin-top: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1.25rem; font-weight: 500; text-transform: uppercase;">
+      <p style="font-size: 0.875rem; color: var(--iron);">Retail Operations Dashboard</p>
+    </div>
+  </div>
+</section>
+
+<!-- Dashboard Content Wrapper -->
+<div style="position: relative; z-index: 20; background: var(--void); margin: 0 -24px -24px -24px; padding: 0 24px 24px 24px;">
+
 
 <!-- ── STAT CARDS ───────────────────────────────────────── -->
 <div class="grid grid-4" id="statGrid" style="margin-bottom:24px;">
@@ -93,6 +108,7 @@
   </div>
 </div>
 
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -143,15 +159,26 @@ async function loadDashboard() {
 
 /* Skiper19 Scroll Animation Logic */
 window.addEventListener('scroll', () => {
+  const heroSection = document.getElementById('heroSection');
   const path = document.getElementById('heroLinePath');
-  if (!path) return;
-  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-  if (maxScroll <= 0) return;
+  if (!heroSection || !path) return;
   
-  const scrollProgress = Math.min(Math.max(window.scrollY / maxScroll, 0), 1);
+  const rect = heroSection.getBoundingClientRect();
+  const scrollableDistance = rect.height - window.innerHeight;
+  
+  let progress = 0;
+  if (scrollableDistance > 0) {
+    // If the top of the section goes above the viewport, rect.top is negative.
+    progress = -rect.top / scrollableDistance;
+  }
+  
+  progress = Math.min(Math.max(progress, 0), 1);
+  
   // Map progress [0, 1] to dashoffset [0.5, 0]
-  const dashoffset = 0.5 - (0.5 * scrollProgress);
-  path.style.strokeDashoffset = dashoffset;
+  // Since pathLength="1" and stroke-dasharray="1", 
+  // setting stroke-dashoffset to 0.5 hides half, 0 reveals all.
+  const dashoffset = 0.5 - (0.5 * progress);
+  path.setAttribute('stroke-dashoffset', dashoffset.toString());
 });
 
 /* Seed data */
