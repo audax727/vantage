@@ -62,6 +62,15 @@ if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
         client_kwargs={"scope": "openid email profile"},
     )
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    return jsonify({
+        "error": "Server error",
+        "details": str(e),
+        "traceback": traceback.format_exc()
+    }), 500
+
 # ----------------------------------------------------------------------------
 # Database helpers
 # ----------------------------------------------------------------------------
