@@ -108,8 +108,9 @@ def get_db():
             g.db = DBWrapper(conn, is_postgres=True)
         else:
             DB_PATH = os.environ.get("DB_PATH", "vantage.db")
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
             conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode = WAL")
             conn.execute("PRAGMA foreign_keys = ON")
             g.db = DBWrapper(conn, is_postgres=False)
     return g.db
@@ -235,7 +236,8 @@ def init_db():
         conn.close()
     else:
         DB_PATH = os.environ.get("DB_PATH", "vantage.db")
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+        conn.execute("PRAGMA journal_mode = WAL")
         cur = conn.cursor()
         sqlite_schema = SCHEMA.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
         cur.executescript(sqlite_schema)
@@ -263,7 +265,8 @@ def current_user():
     if "user_id" not in session:
         return None
     db = get_db()
-    return db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    row = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    return dict(row) if row else None
 
 
 # ----------------------------------------------------------------------------
