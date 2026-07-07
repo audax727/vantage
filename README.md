@@ -1,101 +1,82 @@
-# Vantage — Smart Retail Operations Platform
+<div align="center">
+  <br>
+  <h1>Vantage</h1>
+  <p><strong>Retail Intelligence & POS ERP for SMEs</strong></p>
+  <p><em>The speed you need. The clarity you deserve.</em></p>
+  <br>
+</div>
 
-One transaction pipeline — sale → inventory → ledger → analytics — with four
-honest lenses on the same data. Built for kirana stores, small retail shops,
-and boutiques.
+---
 
-## What's inside
+## 🚀 Overview
 
-```
-vantage/
-├── app.py                  # Full Flask backend (auth, products, sales, ledger, analytics, storefront, AI chat)
-├── requirements.txt
-├── .env.example             # Copy to .env and fill in what you have
-├── templates/                # Multi-section frontend (Jinja2 + vanilla JS)
-│   ├── base.html             # Sidebar layout shared by all logged-in pages
-│   ├── login.html            # Email + Google sign-in
-│   ├── signup.html           # Email + Google sign-up
-│   ├── dashboard.html        # Overview: revenue, dues, reorder alerts, at-risk customers
-│   ├── products.html         # Inventory CRUD + restock
-│   ├── sales.html            # Record a sale (multi-item, auto stock/ledger updates)
-│   ├── ledger.html           # Outstanding dues, collect payment, send reminder
-│   ├── analytics.html        # Top products, dead stock, profit margin, 7-day forecast
-│   └── storefront.html       # Public online storefront + AI chat widget
-├── static/
-│   ├── style.css              # Design system (ledger/kirana-inspired)
-│   └── app.js                 # Shared fetch/toast helpers
-└── sample_data/                # Reference CSVs used to seed realistic demo data
-    ├── sample_products.csv
-    ├── sample_customers.csv
-    └── sample_sales.csv
-```
+**Vantage** is a lightning-fast, beautifully designed, all-in-one ERP built specifically for retail SMEs and wholesale distributors. 
 
-## Setup
+Today, local retail operates in a state of digital fragmentation. Businesses use one clunky, outdated system to ring up sales, a separate Excel sheet to track inventory, and often physical paper notebooks to manage customer credit and dues. 
 
-```bash
-cd vantage
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env            # then fill in whatever keys you have (all optional except FLASK_SECRET_KEY)
-python app.py
-```
+Vantage unifies **Point-of-Sale checkout, real-time inventory tracking, and digital ledger management** into a single cloud platform. It’s designed to be proactive, telling owners exactly what needs attention rather than just acting as a static database.
 
-Open **http://localhost:5000** — you'll land on the sign-up page. Create an
-account (email/password works with zero configuration), then click
-**"Load sample data"** on the dashboard to populate products, customers, and
-a few historical sales matching `sample_data/`.
+## ✨ Key Features
 
-### Using with Antigravity
-Paste the contents of `app.py`, then create each file under `templates/` and
-`static/` with the exact paths shown above — the app expects that folder
-structure (Flask looks for `templates/` and `static/` next to `app.py`
-automatically). Run with `python app.py`.
+*   **⚡ Lightning POS:** Sub-second checkout speed. As you type a customer's name, the system finds them instantly. Auto-calculates subtotals, GST, and custom discounts.
+*   **📖 Unified Digital Ledger:** Built directly into the checkout flow. If a customer needs credit, mark the sale as **'Due'**. Inventory drops, the sale records, and the debt pushes to the Ledger instantly. Zero double data entry.
+*   **📦 Smart Inventory & ERP:** A searchable, scalable catalog. Monitor pricing, margins, categories, and live stock levels. Features bulk CSV import/export.
+*   **📈 Proactive Dashboard:** Get a live pulse of your operation: Revenue, Profit, and Outstanding Dues. Vantage proactively alerts you to low-stock items (ranked by velocity) and highlights at-risk customers.
+*   **📄 B2B Quotations:** Instantly draft professional estimates and convert them to live sales with one click.
+*   **🎨 Premium UI/UX:** Built on the striking **"SVZ Black Gallery"** design system. Features high-contrast Dark Mode, custom cursors, fluid view transitions, and an interactive AI terminal aesthetic.
 
-## API keys — what you actually need
+## 🛠 Tech Stack
 
-| Key | Required? | What it powers | Without it |
-|---|---|---|---|
-| `FLASK_SECRET_KEY` | Recommended | Signs session cookies | A random one is generated each restart, which logs everyone out |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional | "Continue with Google" | Email/password login still works fully; Google button is hidden |
-| `ANTHROPIC_API_KEY` | Optional | AI chat widget on the storefront (product Q&A) | Falls back to simple keyword matching against your catalog — never breaks |
-| `EMAIL_ADDRESS` / `EMAIL_APP_PASSWORD` | Optional | Real email for payment reminders / cart nudges / low-stock alerts | Notifications are logged in "mock mode" and still show in the UI |
+*   **Backend:** Python, Flask
+*   **Database:** PostgreSQL (Production) / SQLite (Local MVP)
+*   **Frontend:** HTML5, CSS3 (Vanilla), JavaScript
+*   **Design System:** SVZ Black Gallery (Void Black, Charcoal, Heartbeat Red)
+*   **Typography:** Inter (Display), Playfair Display (Accents), Fira Code (Mono)
 
-### Getting each key
+## 💻 Setup Instructions (Local Development)
 
-- **Google OAuth**: [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials) → Create OAuth Client ID (Web application) → add `http://localhost:5000/auth/google/callback` as an authorized redirect URI.
-- **Anthropic API key**: [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) — a few dollars of usage covers an entire demo.
-- **Gmail App Password**: enable 2-Step Verification on the Gmail account, then generate a password at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). This is a 16-character password, not your normal Gmail password.
+To run Vantage locally on your machine:
 
-Vantage runs completely with **zero keys set** — every integration has a
-safe, visible fallback so a live demo never breaks.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/vantage.git
+   cd vantage
+   ```
 
-## How data flows (the core design)
+2. **Create and activate a virtual environment:**
+   ```bash
+   python -m venv venv
+   # On Windows:
+   venv\Scripts\activate
+   # On macOS/Linux:
+   source venv/bin/activate
+   ```
 
-```
-Sale Recorded
-   → Stock deducted automatically (stock_movements logged)
-   → If underpaid: ledger entry auto-created against the customer
-   → If stock crosses reorder_threshold: flagged on the reorder list, ranked by 7-day sales velocity
-   → Analytics (profit, top products, dead stock, forecast, at-risk customers) all read from the same tables
-```
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Everything derives from one schema: `products → sales → sale_items →
-ledger_entries → stock_movements`, with `channel` (`in_store` / `online`)
-distinguishing storefront orders from counter sales. No second schema was
-introduced for the storefront, chat widget, or notifications — see `app.py`
-for the full table definitions.
+4. **Environment Variables:**
+   ```bash
+   cp .env.example .env
+   ```
+   *Note: Vantage is designed to run locally even without API keys (they will gracefully fall back to mock modes).*
 
-## Security notes
+5. **Run the application:**
+   ```bash
+   python app.py
+   ```
 
-- Passwords are hashed with Werkzeug's `generate_password_hash` (PBKDF2) — never stored in plain text.
-- Google-authenticated accounts have no password hash at all (`auth_provider = 'google'`).
-- Sessions are signed cookies via Flask's `secret_key` — set `FLASK_SECRET_KEY` in production so sessions survive restarts.
-- All API routes (except the public storefront and its chat/order endpoints) require login via `@login_required` and are scoped to `session['user_id']` — one shop can never see another's data.
-- For production, put this behind HTTPS and consider migrating from SQLite to Postgres if you expect concurrent writers.
+6. Open your browser and navigate to `http://localhost:5000`. You can create an account and click **"Load sample data"** on the dashboard to populate the app with realistic products and sales.
 
-## Not included (by design, for a lean build)
+## 🛡 Security & Architecture
 
-- Real payment processing (Stripe/Razorpay) — the app tracks paid/partial/credit status only, matching how these shops actually operate.
-- Barcode/scanner integration — manual product selection is the honest MVP.
-- Multi-location is schema-ready (`location_id` on `products`) but the UI currently shows one location; extend `products.html` with a location filter if needed.
+- **Data Flow:** One transaction pipeline — `sale → inventory → ledger → analytics`.
+- **Authentication:** Werkzeug PBKDF2 password hashing & Google OAuth integration.
+- **Isolation:** All routes are scoped to `session['user_id']`. One shop can never see another's data.
+
+---
+<div align="center">
+  <p>Built to Scale. Built for Speed.</p>
+</div>
