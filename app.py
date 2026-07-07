@@ -864,8 +864,8 @@ def api_batch_remind():
     
     entries = db.execute(
         "SELECT l.id, l.amount_due, l.amount_paid, c.name as customer_name, c.email FROM ledger_entries l "
-        "JOIN customers c ON c.id = l.customer_id WHERE l.user_id=? AND l.status='open' AND l.date < ?",
-        (user_id, thirty_days_ago)
+        "JOIN customers c ON c.id = l.customer_id WHERE l.user_id=? AND l.status='open'",
+        (user_id,)
     ).fetchall()
     
     count = 0
@@ -901,7 +901,7 @@ def api_ledger_statement(customer_id):
     try:
         from pdf_generator import generate_customer_statement
         pdf_buffer = generate_customer_statement(
-            store_name, customer["name"], customer.get("phone"), customer.get("email"),
+            store_name, customer["name"], dict(customer).get("phone"), dict(customer).get("email"),
             open_balance, [dict(e) for e in entries]
         )
         return send_file(
