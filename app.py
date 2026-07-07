@@ -41,7 +41,7 @@ load_dotenv()
 app = Flask(__name__)
 # Configuration
 DATABASE_URL = os.environ.get("DATABASE_URL")
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_dev_secret_key_vantage_2024")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
 EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS", "")
