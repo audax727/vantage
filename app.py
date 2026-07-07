@@ -14,6 +14,7 @@ import io
 import csv
 import json
 import smtplib
+import sqlite3
 import psycopg2
 import psycopg2.extras
 import secrets
@@ -42,7 +43,7 @@ app = Flask(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_dev_secret_key_vantage_2024")
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
 EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS", "")
 EMAIL_APP_PASSWORD = os.environ.get("EMAIL_APP_PASSWORD", "")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
@@ -74,13 +75,20 @@ def handle_exception(e):
 # ----------------------------------------------------------------------------
 # Database helpers
 # ----------------------------------------------------------------------------
+
 class DBWrapper:
-    def __init__(self, conn):
+    def __init__(self, conn, is_postgres=False):
         self.conn = conn
+        self.is_postgres = is_postgres
         
     def execute(self, query, params=None):
-        cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        q = query.replace('?', '%s')
+        if self.is_postgres:
+            cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            q = query.replace('?', '%s')
+        else:
+            cur = self.conn.cursor()
+            q = query
+            
         if params is None:
             cur.execute(q)
         else:
@@ -95,8 +103,15 @@ class DBWrapper:
 
 def get_db():
     if "db" not in g:
-        conn = psycopg2.connect(DATABASE_URL)
-        g.db = DBWrapper(conn)
+        if DATABASE_URL:
+            conn = psycopg2.connect(DATABASE_URL)
+            g.db = DBWrapper(conn, is_postgres=True)
+        else:
+            DB_PATH = os.environ.get("DB_PATH", "vantage.db")
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON")
+            g.db = DBWrapper(conn, is_postgres=False)
     return g.db
 
 
@@ -170,7 +185,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
 CREATE TABLE IF NOT EXISTS ledger_entries (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
     sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,
     amount_due NUMERIC NOT NULL,
     amount_paid NUMERIC NOT NULL DEFAULT 0,
@@ -212,12 +227,20 @@ CREATE TABLE IF NOT EXISTS quotations (
 
 
 def init_db():
-    if not DATABASE_URL: return
-    conn = psycopg2.connect(DATABASE_URL)
-    cur = conn.cursor()
-    cur.execute(SCHEMA)
-    conn.commit()
-    conn.close()
+    if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute(SCHEMA)
+        conn.commit()
+        conn.close()
+    else:
+        DB_PATH = os.environ.get("DB_PATH", "vantage.db")
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        sqlite_schema = SCHEMA.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
+        cur.executescript(sqlite_schema)
+        conn.commit()
+        conn.close()
 
 # Initialize DB unconditionally so it runs on Gunicorn startup
 init_db()
