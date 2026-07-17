@@ -27,6 +27,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
 
+load_dotenv(override=True)
+
 DEC2FLOAT = psycopg2.extensions.new_type(
     psycopg2.extensions.DECIMAL.values,
     'DEC2FLOAT',
@@ -41,6 +43,13 @@ load_dotenv()
 app = Flask(__name__)
 # Configuration
 DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+    if "?" not in DATABASE_URL:
+        DATABASE_URL += "?sslmode=require"
+    elif "sslmode" not in DATABASE_URL:
+        DATABASE_URL += "&sslmode=require"
+
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
@@ -229,11 +238,22 @@ CREATE TABLE IF NOT EXISTS quotations (
 
 def init_db():
     if DATABASE_URL:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute(SCHEMA)
-        conn.commit()
-        conn.close()
+        print(f"Connecting to Postgres database: {DATABASE_URL[:30]}...")
+        try:
+            db_url = DATABASE_URL.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+            if "?" not in db_url:
+                db_url += "?sslmode=require"
+            elif "sslmode" not in db_url:
+                db_url += "&sslmode=require"
+            
+            conn = psycopg2.connect(db_url)
+            cur = conn.cursor()
+            cur.execute(SCHEMA)
+            conn.commit()
+            conn.close()
+            print("Postgres tables initialized successfully!")
+        except Exception as e:
+            print(f"Postgres Connection Error: {e}")
     else:
         DB_PATH = os.environ.get("DB_PATH", "vantage.db")
         conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
