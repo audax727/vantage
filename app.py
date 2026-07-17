@@ -43,7 +43,7 @@ app = Flask(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS", "")
 EMAIL_APP_PASSWORD = os.environ.get("EMAIL_APP_PASSWORD", "")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
