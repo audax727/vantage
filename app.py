@@ -356,7 +356,10 @@ def record_sale(user_id, customer_id, items, amount_paid, channel="in_store", ti
     now = timestamp if timestamp else datetime.utcnow().isoformat()
 
     total_amount = 0.0
+    total_cgst = 0.0
+    total_sgst = 0.0
     resolved_items = []
+    
     for it in items:
         product = db.execute(
             "SELECT * FROM products WHERE id = ? AND user_id = ?", (it["product_id"], user_id)
@@ -365,9 +368,18 @@ def record_sale(user_id, customer_id, items, amount_paid, channel="in_store", ti
             raise ValueError(f"Product {it['product_id']} not found")
         if product["current_stock"] < it["qty"]:
             raise ValueError(f"Insufficient stock for {product['name']}")
+            
         line_total = float(product["sell_price"]) * float(it["qty"])
+        rate = float(product["gst_rate"]) if product.get("gst_rate") is not None else 18.0
+        tax_amount = line_total * (rate / 100.0)
+        
+        total_cgst += tax_amount / 2
+        total_sgst += tax_amount / 2
+        
         total_amount += line_total
         resolved_items.append((product, it["qty"], float(product["sell_price"])))
+
+    total_amount += total_cgst + total_sgst
 
     if amount_paid >= total_amount - 1e-9:
         payment_status = "paid"
@@ -377,9 +389,9 @@ def record_sale(user_id, customer_id, items, amount_paid, channel="in_store", ti
         payment_status = "credit"
 
     cur = db.execute(
-        "INSERT INTO sales (user_id, customer_id, channel, total_amount, amount_paid, payment_status, status, timestamp) "
-        "VALUES (?,?,?,?,?,?,?,?) RETURNING id",
-        (user_id, customer_id, channel, total_amount, amount_paid, payment_status, "completed", now),
+        "INSERT INTO sales (user_id, customer_id, channel, total_amount, amount_paid, payment_status, status, cgst_amount, sgst_amount, timestamp) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        (user_id, customer_id, channel, total_amount, amount_paid, payment_status, "completed", total_cgst, total_sgst, now),
     )
     sale_id = cur.fetchone()["id"]
 
@@ -628,8 +640,25 @@ def google_callback():
 
 @app.route("/logout")
 def logout():
-    session.clear()
-    return redirect(url_for("home"))
+    session.pop("user_id", None)
+    return redirect(url_for("landing"))
+
+
+@app.route("/api/settings", methods=["POST"])
+@login_required
+def api_settings():
+    db = get_db()
+    user_id = session["user_id"]
+    d = request.get_json()
+    
+    shop_name = d.get("shop_name")
+    gstin = d.get("gstin")
+    
+    if shop_name:
+        db.execute("UPDATE users SET shop_name=?, gstin=? WHERE id=?", (shop_name, gstin, user_id))
+        db.commit()
+        return jsonify({"ok": True})
+    return jsonify({"error": "Shop name required"}), 400
 
 
 # ----------------------------------------------------------------------------
@@ -689,11 +718,18 @@ def api_products():
 
     if request.method == "POST":
         d = request.get_json()
+        gst_rate = 18.0
+        try:
+            if d.get("gst_rate"):
+                gst_rate = float(d["gst_rate"])
+        except ValueError:
+            pass
+            
         cur = db.execute(
             "INSERT INTO products (user_id, name, category, cost_price, sell_price, current_stock, "
-            "reorder_threshold, unit, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
+            "reorder_threshold, unit, gst_rate, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
             (user_id, d["name"], d.get("category", ""), d.get("cost_price", 0), d.get("sell_price", 0),
-             d.get("current_stock", 0), d.get("reorder_threshold", 5), d.get("unit", "pcs"),
+             d.get("current_stock", 0), d.get("reorder_threshold", 5), d.get("unit", "pcs"), gst_rate,
              datetime.utcnow().isoformat()),
         )
         pid = cur.fetchone()["id"]
@@ -719,14 +755,22 @@ def api_product_detail(product_id):
         return jsonify({"ok": True})
 
     d = request.get_json()
+    
+    gst_rate = product.get("gst_rate", 18.0)
+    try:
+        if "gst_rate" in d and d["gst_rate"] != "":
+            gst_rate = float(d["gst_rate"])
+    except ValueError:
+        pass
+        
     db.execute(
         "UPDATE products SET name=?, category=?, cost_price=?, sell_price=?, current_stock=?, "
-        "reorder_threshold=?, unit=? WHERE id=?",
+        "reorder_threshold=?, unit=?, gst_rate=? WHERE id=?",
         (d.get("name", product["name"]), d.get("category", product["category"]),
          d.get("cost_price", product["cost_price"]), d.get("sell_price", product["sell_price"]),
          d.get("current_stock", product["current_stock"]),
          d.get("reorder_threshold", product["reorder_threshold"]), d.get("unit", product["unit"]),
-         product_id),
+         gst_rate, product_id),
     )
     db.commit()
     return jsonify({"ok": True})
@@ -1558,17 +1602,38 @@ def api_quotations():
         if not items:
             return jsonify({"error": "Items required"}), 400
             
-        items_json = json.dumps(items)
         subtotal = float(d.get("subtotal", 0))
         discount_pct = float(d.get("discount_pct", 0))
         total_amount = float(d.get("total_amount", 0))
         customer_id = d.get("customer_id")
         customer_name = d.get("customer_name", "Walk-in")
         
+        # Calculate GST
+        total_cgst = 0
+        total_sgst = 0
+        for it in items:
+            product = db.execute("SELECT gst_rate FROM products WHERE id = ?", (it["product_id"],)).fetchone()
+            rate = float(product["gst_rate"]) if product and product["gst_rate"] is not None else 18.0
+            
+            # Calculate tax on discounted price
+            discounted_line = float(it["line_total"]) * (1 - discount_pct/100.0)
+            tax_amount = discounted_line * (rate / 100.0)
+            
+            total_cgst += tax_amount / 2
+            total_sgst += tax_amount / 2
+            
+            # Save the rate in the JSON so PDF generator can access it easily
+            it["gst_rate"] = rate
+            
+        items_json = json.dumps(items)
+        
+        # Add taxes to the total_amount
+        final_total = total_amount + total_cgst + total_sgst
+        
         cur = db.execute(
-            "INSERT INTO quotations (user_id, customer_id, customer_name, items_json, subtotal, discount_pct, total_amount, notes, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
-            (user_id, customer_id, customer_name, items_json, subtotal, discount_pct, total_amount, d.get("notes", ""), datetime.utcnow().isoformat())
+            "INSERT INTO quotations (user_id, customer_id, customer_name, items_json, subtotal, discount_pct, total_amount, cgst_amount, sgst_amount, notes, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
+            (user_id, customer_id, customer_name, items_json, subtotal, discount_pct, final_total, total_cgst, total_sgst, d.get("notes", ""), datetime.utcnow().isoformat())
         )
         quote_id = cur.fetchone()["id"]
         db.commit()
@@ -1604,7 +1669,8 @@ def api_quotation_pdf(quote_id):
         from pdf_generator import generate_quotation
         pdf_buffer = generate_quotation(
             store_name, quote_id, quote["customer_name"], customer_phone, customer_email,
-            json.loads(quote["items_json"]), quote["subtotal"], quote["discount_pct"], quote["total_amount"], quote["notes"]
+            json.loads(quote["items_json"]), quote["subtotal"], quote["discount_pct"], quote["total_amount"], 
+            quote.get("cgst_amount", 0), quote.get("sgst_amount", 0), shop.get("gstin") if shop else "", quote["notes"]
         )
         return send_file(
             pdf_buffer, as_attachment=True,
@@ -1720,43 +1786,44 @@ def api_quotation_convert(quote_id):
 @app.route("/api/seed-demo-data", methods=["POST"])
 @login_required
 def seed_demo_data():
-    """Populates the account with realistic sample data for demoing."""
+    """Populates the account with realistic sample data for demoing, clearing old data first."""
     user_id = session["user_id"]
     db = get_db()
     
-    # Optional: Clear old demo data for the user to keep things clean? 
-    # For now, just append as it did previously.
+    # Clear old data to make this idempotent
+    db.execute("DELETE FROM ledger_entries WHERE user_id=?", (user_id,))
+    db.execute("DELETE FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE user_id=?)", (user_id,))
+    db.execute("DELETE FROM sales WHERE user_id=?", (user_id,))
+    db.execute("DELETE FROM products WHERE user_id=?", (user_id,))
+    db.execute("DELETE FROM customers WHERE user_id=?", (user_id,))
+    db.commit()
     
     with open("seed_data.json", "r") as f:
         data = json.load(f)
         
     product_map = {}
     for p in data["products"]:
-        existing = db.execute("SELECT id FROM products WHERE user_id=? AND name=?", (user_id, p["name"])).fetchone()
-        if existing:
-            product_map[p["name"]] = existing["id"]
-        else:
-            cur = db.execute(
-                "INSERT INTO products (user_id, name, category, cost_price, sell_price, current_stock, "
-                "reorder_threshold, unit, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
-                (user_id, p["name"], p["category"], p["cost_price"], p["sell_price"], p["start_stock"], p["threshold"], p["unit"], datetime.utcnow().isoformat()),
-            )
-            product_map[p["name"]] = cur.lastrowid
+        cur = db.execute(
+            "INSERT INTO products (user_id, name, category, cost_price, sell_price, current_stock, "
+            "reorder_threshold, unit, gst_rate, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+            (user_id, p["name"], p["category"], p["cost_price"], p["sell_price"], p["start_stock"], p["threshold"], p["unit"], p.get("gst_rate", 18.0), datetime.utcnow().isoformat()),
+        )
+        product_map[p["name"]] = cur.fetchone()["id"]
 
     customer_map = {}
     for c in data["customers"]:
         name, phone, email = c[0], c[1], c[2]
-        existing = db.execute("SELECT id FROM customers WHERE user_id=? AND name=?", (user_id, name)).fetchone()
-        if existing:
-            customer_map[name] = existing["id"]
-        else:
-            cur = db.execute(
-                "INSERT INTO customers (user_id, name, phone, email, created_at) VALUES (?,?,?,?,?)",
-                (user_id, name, phone, email, datetime.utcnow().isoformat()),
-            )
-            customer_map[name] = cur.lastrowid
+        cur = db.execute(
+            "INSERT INTO customers (user_id, name, phone, email, created_at) VALUES (?,?,?,?,?) RETURNING id",
+            (user_id, name, phone, email, datetime.utcnow().isoformat()),
+        )
+        customer_map[name] = cur.fetchone()["id"]
         
     db.commit()
+
+    # Find the most recent sale date in the mock data
+    latest_mock_date = max(datetime.strptime(s["date"], "%Y-%m-%d %H:%M") for s in data["sales"])
+    time_shift = datetime.utcnow() - latest_mock_date
 
     for s in data["sales"]:
         cid = customer_map.get(s["customer"])
@@ -1764,10 +1831,15 @@ def seed_demo_data():
         for it in s["items"]:
             items.append({"product_id": product_map[it["name"]], "qty": it["qty"]})
             
-        timestamp = s["date"].replace(" ", "T") + ":00"
-        record_sale(user_id, cid, items, amount_paid=s["paid"], channel=s["channel"], timestamp=timestamp)
+        mock_timestamp = datetime.strptime(s["date"], "%Y-%m-%d %H:%M")
+        shifted_timestamp = (mock_timestamp + time_shift).isoformat()
+        
+        try:
+            record_sale(user_id, cid, items, amount_paid=s["paid"], channel=s["channel"], timestamp=shifted_timestamp)
+        except Exception as e:
+            print(f"Skipping sale due to error: {e}")
 
-    return jsonify({"ok": True, "message": "Demo data seeded"})
+    return jsonify({"ok": True, "message": "Demo data seeded with recent dates"})
 
 
 # ----------------------------------------------------------------------------

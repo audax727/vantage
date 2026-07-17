@@ -9,7 +9,8 @@
       "threshold": 10,
       "unit": "bag",
       "sold_qty": 16,
-      "start_stock": 40
+      "start_stock": 40,
+      "gst_rate": 5.0
     },
     {
       "name": "Toor Dal 1kg",
@@ -20,7 +21,8 @@
       "threshold": 15,
       "unit": "pack",
       "sold_qty": 12,
-      "start_stock": 60
+      "start_stock": 60,
+      "gst_rate": 5.0
     },
     {
       "name": "Sunflower Oil 1L",
@@ -31,7 +33,8 @@
       "threshold": 10,
       "unit": "bottle",
       "sold_qty": 13,
-      "start_stock": 25
+      "start_stock": 25,
+      "gst_rate": 5.0
     },
     {
       "name": "Tata Salt 1kg",
@@ -42,7 +45,8 @@
       "threshold": 20,
       "unit": "pack",
       "sold_qty": 18,
-      "start_stock": 100
+      "start_stock": 100,
+      "gst_rate": 0.0
     },
     {
       "name": "Colgate Toothpaste",
@@ -53,7 +57,8 @@
       "threshold": 10,
       "unit": "pcs",
       "sold_qty": 8,
-      "start_stock": 8
+      "start_stock": 8,
+      "gst_rate": 18.0
     },
     {
       "name": "Parle-G Biscuits",
@@ -64,7 +69,8 @@
       "threshold": 30,
       "unit": "pack",
       "sold_qty": 29,
-      "start_stock": 150
+      "start_stock": 150,
+      "gst_rate": 18.0
     },
     {
       "name": "Amul Milk 1L",
@@ -75,7 +81,8 @@
       "threshold": 15,
       "unit": "pack",
       "sold_qty": 5,
-      "start_stock": 15
+      "start_stock": 15,
+      "gst_rate": 0.0
     },
     {
       "name": "Maggi Noodles",
@@ -86,7 +93,8 @@
       "threshold": 20,
       "unit": "pack",
       "sold_qty": 10,
-      "start_stock": 90
+      "start_stock": 90,
+      "gst_rate": 12.0
     },
     {
       "name": "Britannia Bread",
@@ -97,7 +105,8 @@
       "threshold": 10,
       "unit": "loaf",
       "sold_qty": 8,
-      "start_stock": 20
+      "start_stock": 20,
+      "gst_rate": 0.0
     },
     {
       "name": "Surf Excel 1kg",
@@ -108,7 +117,8 @@
       "threshold": 10,
       "unit": "pack",
       "sold_qty": 8,
-      "start_stock": 12
+      "start_stock": 12,
+      "gst_rate": 18.0
     },
     {
       "name": "Red Label Tea 250g",
@@ -119,7 +129,8 @@
       "threshold": 10,
       "unit": "pack",
       "sold_qty": 11,
-      "start_stock": 30
+      "start_stock": 30,
+      "gst_rate": 5.0
     },
     {
       "name": "Lifebuoy Soap",
@@ -130,7 +141,8 @@
       "threshold": 20,
       "unit": "pcs",
       "sold_qty": 21,
-      "start_stock": 80
+      "start_stock": 80,
+      "gst_rate": 18.0
     },
     {
       "name": "Aashirvaad Atta 5kg",
@@ -141,7 +153,8 @@
       "threshold": 10,
       "unit": "bag",
       "sold_qty": 11,
-      "start_stock": 25
+      "start_stock": 25,
+      "gst_rate": 5.0
     },
     {
       "name": "Kurkure",
@@ -152,7 +165,8 @@
       "threshold": 15,
       "unit": "pack",
       "sold_qty": 10,
-      "start_stock": 70
+      "start_stock": 70,
+      "gst_rate": 12.0
     },
     {
       "name": "Harpic Toilet Cleaner",
@@ -163,7 +177,8 @@
       "threshold": 10,
       "unit": "bottle",
       "sold_qty": 0,
-      "start_stock": 18
+      "start_stock": 18,
+      "gst_rate": 18.0
     }
   ],
   "customers": [
