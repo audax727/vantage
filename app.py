@@ -1005,15 +1005,19 @@ def api_analytics_ai_report():
     )
     
     try:
-        from groq import Groq
-        client = Groq(api_key=GROQ_API_KEY)
-        resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        return resp.choices[0].message.content, 200, {'Content-Type': 'application/json'}
+        import requests
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+        data = {
+            "model": "llama-3.1-8b-instant",
+            "response_format": {"type": "json_object"},
+            "messages": [{"role": "user", "content": prompt}]
+        }
+        r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=20)
+        r.raise_for_status()
+        content = r.json()["choices"][0]["message"]["content"]
+        return content, 200, {'Content-Type': 'application/json'}
     except Exception as e:
+        print(f"ai_report error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1060,17 +1064,21 @@ def classify_query(question, api_key):
         f"Query: \"{question}\""
     )
     try:
-        from groq import Groq
-        client = Groq(api_key=api_key)
-        resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            response_format={"type": "json_object"},
-            max_tokens=100,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        result = json.loads(resp.choices[0].message.content)
+        import requests
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        data = {
+            "model": "llama-3.1-8b-instant",
+            "response_format": {"type": "json_object"},
+            "max_tokens": 100,
+            "messages": [{"role": "user", "content": prompt}]
+        }
+        r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=10)
+        r.raise_for_status()
+        content = r.json()["choices"][0]["message"]["content"]
+        result = json.loads(content)
         return result.get("classification", "OUT_OF_SCOPE").upper()
-    except Exception:
+    except Exception as e:
+        print(f"classify_query error: {e}")
         return "OUT_OF_SCOPE"
 
 @app.route("/api/analytics/ai_chat", methods=["POST"])
@@ -1100,21 +1108,22 @@ def api_analytics_ai_chat():
     )
     
     try:
-        from groq import Groq
-        client = Groq(api_key=GROQ_API_KEY)
-        resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            max_tokens=800,
-            messages=[{
-                "role": "system",
-                "content": system_prompt
-            }, {
-                "role": "user",
-                "content": question
-            }]
-        )
-        return jsonify({"answer": resp.choices[0].message.content})
+        import requests
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+        data = {
+            "model": "llama-3.1-8b-instant",
+            "max_tokens": 800,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question}
+            ]
+        }
+        r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=20)
+        r.raise_for_status()
+        content = r.json()["choices"][0]["message"]["content"]
+        return jsonify({"answer": content})
     except Exception as e:
+        print(f"ai_chat error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
