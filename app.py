@@ -15,12 +15,21 @@ import csv
 import json
 import smtplib
 import sqlite3
+import logging
 import psycopg2
 import psycopg2.extras
 import secrets
 from email.mime.text import MIMEText
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from functools import wraps
+
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    APSCHEDULER_AVAILABLE = True
+except ImportError:
+    APSCHEDULER_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 from flask import Flask, request, jsonify, session, redirect, url_for, render_template, g, send_file, Response
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -113,7 +122,7 @@ class DBWrapper:
 def get_db():
     if "db" not in g:
         if DATABASE_URL:
-            conn = psycopg2.connect(DATABASE_URL)
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
             g.db = DBWrapper(conn, is_postgres=True)
         else:
             DB_PATH = os.environ.get("DB_PATH", "vantage.db")
@@ -232,6 +241,14 @@ CREATE TABLE IF NOT EXISTS quotations (
     status TEXT NOT NULL DEFAULT 'pending',  -- pending / accepted / declined
     notes TEXT,
     created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reminders_sent (
+    id SERIAL PRIMARY KEY,
+    ledger_entry_id INTEGER NOT NULL REFERENCES ledger_entries(id) ON DELETE CASCADE,
+    milestone INTEGER NOT NULL,       -- 7, 15, 30, or 45
+    sent_at TEXT NOT NULL,
+    UNIQUE (ledger_entry_id, milestone)
 );
 """
 
@@ -899,6 +916,182 @@ def api_batch_remind():
         count += 1
         
     return jsonify({"ok": True, "count": count})
+
+
+# ----------------------------------------------------------------------------
+# Collections job — milestone reminders (7 / 15 / 30 / 45 days)
+# ----------------------------------------------------------------------------
+REMINDER_MILESTONES = {7, 15, 30, 45}
+
+REMINDER_MESSAGES = {
+    7:  "Hi {name}, just a gentle reminder that your balance of ₹{due:.2f} is due — please settle at your earliest convenience. Thank you for your business!",
+    15: "Hi {name}, friendly follow-up on your outstanding balance of ₹{due:.2f} — we'd appreciate hearing from you soon. Let us know if you have any questions!",
+    30: "Hi {name}, your balance of ₹{due:.2f} has been outstanding for 30 days — we kindly request you settle this soon to keep your account in good standing.",
+    45: "Hi {name}, final notice: your overdue balance of ₹{due:.2f} requires immediate attention to avoid any disruption to your account with us.",
+}
+
+
+def _get_scheduler_db():
+    """Open a standalone DB connection for use outside the Flask app context."""
+    if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        return DBWrapper(conn, is_postgres=True)
+    else:
+        DB_PATH = os.environ.get("DB_PATH", "vantage.db")
+        conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA foreign_keys = ON")
+        return DBWrapper(conn, is_postgres=False)
+
+
+def _run_collections_logic():
+    """Core milestone-reminder logic. Returns the number of reminders sent.
+    Safe to call from the scheduler (outside app context) or from an endpoint
+    (inside app context via get_db()).
+    """
+    # Use a fresh standalone connection so this works both inside and outside
+    # the Flask request context without touching Flask's `g`.
+    db = _get_scheduler_db()
+    sent_count = 0
+    today = date.today()
+
+    try:
+        users = db.execute("SELECT id FROM users").fetchall()
+        for user_row in users:
+            user_id = user_row["id"]
+
+            open_entries = db.execute(
+                "SELECT l.id, l.amount_due, l.amount_paid, l.date, "
+                "       c.name as customer_name, c.email "
+                "FROM ledger_entries l "
+                "JOIN customers c ON c.id = l.customer_id "
+                "WHERE l.user_id = ? AND l.status = 'open'",
+                (user_id,)
+            ).fetchall()
+
+            for entry in open_entries:
+                # Parse the entry date — stored as ISO string
+                raw_date = entry["date"]
+                try:
+                    entry_date = date.fromisoformat(raw_date[:10])
+                except (ValueError, TypeError):
+                    continue
+
+                age_days = (today - entry_date).days
+
+                if age_days not in REMINDER_MILESTONES:
+                    continue
+
+                # Check whether we already sent this milestone for this entry
+                already_sent = db.execute(
+                    "SELECT 1 FROM reminders_sent "
+                    "WHERE ledger_entry_id = ? AND milestone = ?",
+                    (entry["id"], age_days)
+                ).fetchone()
+                if already_sent:
+                    continue
+
+                due = float(entry["amount_due"]) - float(entry["amount_paid"])
+                if due <= 0:
+                    continue
+
+                message = REMINDER_MESSAGES[age_days].format(
+                    name=entry["customer_name"],
+                    due=due
+                )
+
+                # Reuse the existing send_notification() — it handles both real
+                # email and the mock-log fallback exactly as before.
+                # We need an app context for get_db() inside send_notification.
+                with app.app_context():
+                    send_notification(
+                        user_id,
+                        "payment_reminder",
+                        message,
+                        to_email=entry["email"] or None
+                    )
+
+                # Record the milestone so it's never sent again
+                try:
+                    db.execute(
+                        "INSERT INTO reminders_sent (ledger_entry_id, milestone, sent_at) "
+                        "VALUES (?, ?, ?)",
+                        (entry["id"], age_days, datetime.utcnow().isoformat())
+                    )
+                    db.commit()
+                except Exception:
+                    # UNIQUE constraint hit — concurrent run; skip silently
+                    pass
+
+                sent_count += 1
+    finally:
+        db.close()
+
+    return sent_count
+
+
+def scheduled_collections_job():
+    """Entry point called by APScheduler. Logs before/after so the run is
+    clearly visible in the console during a demo."""
+    logger.info("[collections] Scheduled job started.")
+    try:
+        count = _run_collections_logic()
+        logger.info(f"[collections] Job complete — {count} reminder(s) sent.")
+    except Exception as exc:
+        logger.error(f"[collections] Job failed with error: {exc}", exc_info=True)
+
+
+@app.route("/api/ledger/run-collections", methods=["POST"])
+@login_required
+def api_run_collections():
+    """Manual trigger for the collections job — same logic, same dedup rules."""
+    logger.info("[collections] Manual trigger via POST /api/ledger/run-collections.")
+    try:
+        count = _run_collections_logic()
+        logger.info(f"[collections] Manual run complete — {count} reminder(s) sent.")
+        return jsonify({"ok": True, "reminders_sent": count})
+    except Exception as exc:
+        logger.error(f"[collections] Manual run failed: {exc}", exc_info=True)
+        return jsonify({"error": str(exc)}), 500
+
+
+# ----------------------------------------------------------------------------
+# APScheduler — start once at boot (safe no-op if APScheduler is missing)
+# ----------------------------------------------------------------------------
+def _start_scheduler():
+    if not APSCHEDULER_AVAILABLE:
+        logger.warning(
+            "[collections] APScheduler not installed — daily reminders disabled. "
+            "Add 'apscheduler' to requirements.txt and restart."
+        )
+        return
+
+    run_hour   = int(os.environ.get("REMINDER_RUN_HOUR",   "9"))
+    run_minute = int(os.environ.get("REMINDER_RUN_MINUTE", "0"))
+
+    try:
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            scheduled_collections_job,
+            trigger="cron",
+            hour=run_hour,
+            minute=run_minute,
+            id="daily_collections",
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info(
+            f"[collections] Scheduler started — daily job will run at "
+            f"{run_hour:02d}:{run_minute:02d} server local time."
+        )
+    except Exception as exc:
+        logger.warning(
+            f"[collections] Scheduler failed to start (app continues normally): {exc}"
+        )
+
+
+_start_scheduler()
 
 
 @app.route("/api/ledger/<int:customer_id>/statement", methods=["GET"])
