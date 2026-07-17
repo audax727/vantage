@@ -59,7 +59,7 @@ let customers = [];
 let lineCount = 0;
 
 function lineItemRow(idx) {
-  const options = products.map(p => `<option value="${p.id}" data-price="${p.sell_price}" data-stock="${p.current_stock}">${p.name} (₹${p.sell_price}, ${p.current_stock} in stock)</option>`).join('');
+  const options = products.map(p => `<option value="${p.id}" data-price="${p.sell_price}" data-stock="${p.current_stock}" data-gst="${p.gst_rate ?? 18}">${p.name} (₹${p.sell_price}, ${p.current_stock} in stock, ${p.gst_rate ?? 18}% GST)</option>`).join('');
   return `
     <div class="line-item-row" data-idx="${idx}">
       <div class="field" style="margin-bottom:0"><label>Product</label>
@@ -91,23 +91,54 @@ function removeLine(idx) {
 }
 
 function updateTotal() {
-  let total = 0;
+  let subtotal = 0;
+  let totalTax = 0;
+  
   document.querySelectorAll('.line-item-row').forEach(row => {
     const select = row.querySelector('.line-product');
     const qty = parseFloat(row.querySelector('.line-qty').value) || 0;
     const price = parseFloat(select.selectedOptions[0]?.dataset.price || 0);
+    const gst = parseFloat(select.selectedOptions[0]?.dataset.gst ?? 18);
     const lineTotal = qty * price;
+    
+    // We update line total without tax first
     row.querySelector('.line-total').value = '₹' + lineTotal.toFixed(2);
-    total += lineTotal;
+    
+    subtotal += lineTotal;
+    
+    // Note: If discount is applied, tax will be slightly lower, but for live UI preview 
+    // per item, we show it based on undiscounted price, or compute aggregate tax below.
   });
   
   const discountPct = parseFloat(document.getElementById('discountPct').value) || 0;
+  let taxableValue = subtotal;
+  
   if (discountPct > 0) {
-    total = total - (total * (discountPct / 100));
+    taxableValue = subtotal - (subtotal * (discountPct / 100));
   }
   
-  document.getElementById('runningTotal').textContent = '₹' + total.toFixed(2);
-  return total;
+  // Re-calculate total tax accurately based on taxable value proportions
+  document.querySelectorAll('.line-item-row').forEach(row => {
+    const select = row.querySelector('.line-product');
+    const qty = parseFloat(row.querySelector('.line-qty').value) || 0;
+    const price = parseFloat(select.selectedOptions[0]?.dataset.price || 0);
+    const gst = parseFloat(select.selectedOptions[0]?.dataset.gst ?? 18);
+    
+    let lineTotal = qty * price;
+    if (discountPct > 0) {
+        lineTotal = lineTotal - (lineTotal * (discountPct / 100));
+    }
+    
+    totalTax += lineTotal * (gst / 100.0);
+  });
+  
+  const finalTotal = taxableValue + totalTax;
+  
+  // We can update the UI running total label to show the breakdown
+  document.getElementById('runningTotal').innerHTML = 
+    `₹${finalTotal.toFixed(2)} <br><span style="font-size:12px; font-weight:400; color:var(--iron);">Taxable: ₹${taxableValue.toFixed(2)} | GST: ₹${totalTax.toFixed(2)}</span>`;
+    
+  return finalTotal;
 }
 
 function toggleB2bMode() {
