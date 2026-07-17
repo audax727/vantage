@@ -47,10 +47,10 @@
   }
   .rm-row {
     display: grid;
-    grid-template-columns: 1fr auto auto 1fr auto;
-    align-items: center;
+    grid-template-columns: 1fr auto auto;
+    align-items: start;
     gap: 10px;
-    padding: 12px 14px;
+    padding: 14px;
     border-radius: 8px;
     background: var(--bg-elevated, rgba(255,255,255,.04));
     border: 1px solid var(--border, rgba(255,255,255,.08));
@@ -125,7 +125,6 @@
     color: inherit;
     box-sizing: border-box;
   }
-  .rm-email:disabled { opacity: .3; cursor: not-allowed; }
   .rm-email::placeholder { opacity: .35; }
 
   /* Save per-row button */
@@ -142,6 +141,21 @@
   }
   .rm-save-btn:hover { background: rgba(16,185,129,.12); }
   .rm-save-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* Send Now button */
+  .rm-send-btn {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(99,102,241,.45);
+    background: transparent;
+    color: #818cf8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+  }
+  .rm-send-btn:hover { background: rgba(99,102,241,.12); }
+  .rm-send-btn:disabled { opacity: .35; cursor: not-allowed; }
 
   .rm-empty {
     text-align: center;
@@ -166,6 +180,14 @@
     transition: background .15s, border-color .2s;
   }
   .remind-fab:hover { background: rgba(16,185,129,.15); border-color: #10b981; }
+
+  /* Email field hint */
+  .rm-email-hint {
+    font-size: 10px;
+    opacity: .4;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
 </style>
 
 <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
@@ -218,8 +240,10 @@
   <div class="modal reminder-modal-wrap">
     <h3>Manage Daily Reminders</h3>
     <p class="modal-sub">
-      Enable a daily email to each customer who has an outstanding balance.
-      Set the time and an optional override email per customer.
+      Enable a daily email for each customer with an open balance.
+      Enter a <strong>custom email</strong> — that's where the reminder goes.
+      Leave blank to use the customer's email on file.
+      Hit <strong>Send Now</strong> any time to test immediately.
     </p>
 
     <div class="rm-list" id="rmList">
@@ -324,44 +348,60 @@ async function renderRemindersModal() {
     }
 
     list.innerHTML = customers.map(c => {
-      const cfg = _remindersMap[c.id] || {};
-      const enabled   = cfg.enabled != null ? !!cfg.enabled : false;
-      const hour      = cfg.send_hour   != null ? cfg.send_hour   : 9;
-      const minute    = cfg.send_minute != null ? cfg.send_minute : 0;
-      const ovEmail   = cfg.override_email || '';
-      const timeVal   = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
-      const rowActive = enabled ? 'rm-active' : '';
+      const cfg      = _remindersMap[c.id] || {};
+      const enabled  = cfg.enabled != null ? !!cfg.enabled : false;
+      const hour     = cfg.send_hour   != null ? cfg.send_hour   : 9;
+      const minute   = cfg.send_minute != null ? cfg.send_minute : 0;
+      const ovEmail  = cfg.override_email || '';
+      const timeVal  = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+      const rowClass = enabled ? 'rm-active' : '';
+      const placeholder = c.email ? `${c.email} (on file)` : 'enter custom email';
 
       return `
-        <div class="rm-row ${rowActive}" id="rmrow-${c.id}">
-          <!-- Customer info -->
+        <div class="rm-row ${rowClass}" id="rmrow-${c.id}">
+
+          <!-- Left: customer name + email row -->
           <div>
             <div class="rm-customer-name">${c.name}</div>
-            <div class="rm-customer-email">${c.email || 'no email on file'}</div>
+            <div class="rm-customer-email" style="margin-bottom:8px;">${c.email || 'no email on file'}</div>
+
+            <!-- Custom email — always editable so you can test without enabling schedule -->
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <input type="email" class="rm-email" id="rmemail-${c.id}"
+                     placeholder="${placeholder}"
+                     value="${ovEmail}"
+                     title="Reminder goes here. Leave blank to use customer's on-file email."
+                     style="max-width:240px;">
+              <button class="rm-send-btn" id="rmsend-${c.id}"
+                      onclick="sendReminderNow(${c.id})"
+                      title="Send a test reminder to this email right now">
+                ⚡ Send Now
+              </button>
+            </div>
+            <div class="rm-email-hint">Leave blank → uses customer's email on file</div>
           </div>
 
-          <!-- Toggle -->
-          <label class="rm-toggle" title="${enabled ? 'Disable' : 'Enable'} daily reminder">
-            <input type="checkbox" id="rmtoggle-${c.id}" ${enabled ? 'checked' : ''}
-                   onchange="onRmToggle(${c.id})">
-            <span class="rm-slider"></span>
-          </label>
+          <!-- Middle: toggle + time -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:2px;">
+            <label class="rm-toggle" title="${enabled ? 'Disable' : 'Enable'} daily schedule">
+              <input type="checkbox" id="rmtoggle-${c.id}" ${enabled ? 'checked' : ''}
+                     onchange="onRmToggle(${c.id})">
+              <span class="rm-slider"></span>
+            </label>
+            <span style="font-size:10px;opacity:.4;">${enabled ? 'daily' : 'off'}</span>
+          </div>
 
-          <!-- Time picker -->
-          <input type="time" class="rm-time" id="rmtime-${c.id}" value="${timeVal}"
-                 ${!enabled ? 'disabled' : ''} title="Reminder time (server local)">
+          <!-- Right: time + save -->
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-top:2px;">
+            <input type="time" class="rm-time" id="rmtime-${c.id}" value="${timeVal}"
+                   ${!enabled ? 'disabled' : ''}
+                   title="Daily reminder fires at this time (server local time)">
+            <button class="rm-save-btn" id="rmsave-${c.id}"
+                    onclick="saveReminder(${c.id})" ${!enabled ? 'disabled' : ''}>
+              Save
+            </button>
+          </div>
 
-          <!-- Override email -->
-          <input type="email" class="rm-email" id="rmemail-${c.id}"
-                 placeholder="${c.email || 'customer email'}"
-                 value="${ovEmail}" ${!enabled ? 'disabled' : ''}
-                 title="Leave blank to use customer's email on file">
-
-          <!-- Save button -->
-          <button class="rm-save-btn" id="rmsave-${c.id}"
-                  onclick="saveReminder(${c.id})" ${!enabled ? 'disabled' : ''}>
-            Save
-          </button>
         </div>
       `;
     }).join('');
@@ -375,18 +415,16 @@ function onRmToggle(customerId) {
   const enabled = document.getElementById(`rmtoggle-${customerId}`).checked;
   const row     = document.getElementById(`rmrow-${customerId}`);
   const timeEl  = document.getElementById(`rmtime-${customerId}`);
-  const emailEl = document.getElementById(`rmemail-${customerId}`);
   const saveBtn = document.getElementById(`rmsave-${customerId}`);
+  const label   = row.querySelector('span[style*="font-size:10px"]');
 
   timeEl.disabled  = !enabled;
-  emailEl.disabled = !enabled;
   saveBtn.disabled = !enabled;
+  if (label) label.textContent = enabled ? 'daily' : 'off';
   row.classList.toggle('rm-active', enabled);
 
-  // Auto-save the toggle state immediately (disable = OFF, enable = re-enable with saved time)
-  if (!enabled) {
-    saveReminder(customerId, false);
-  }
+  // Auto-save the enabled/disabled state immediately
+  saveReminder(customerId, enabled);
 }
 
 async function saveReminder(customerId, forceEnabled) {
@@ -411,13 +449,39 @@ async function saveReminder(customerId, forceEnabled) {
       }
     });
     toast(enabled
-      ? `Reminder set for ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} daily`
-      : 'Reminder disabled');
-    if (saveBtn) saveBtn.textContent = 'Saved ✓';
+      ? `Daily reminder saved — fires at ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`
+      : 'Daily reminder disabled');
+    if (saveBtn) { saveBtn.textContent = 'Saved ✓'; }
     setTimeout(() => { if (saveBtn) saveBtn.textContent = 'Save'; }, 1800);
   } catch(err) {
-    toast('Error: ' + err.message);
+    toast('Save error: ' + err.message);
     if (saveBtn) saveBtn.textContent = 'Save';
+  }
+}
+
+async function sendReminderNow(customerId) {
+  const sendBtn = document.getElementById(`rmsend-${customerId}`);
+  const ovEmail = (document.getElementById(`rmemail-${customerId}`).value || '').trim();
+
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; }
+
+  try {
+    const res = await api(`/api/ledger/reminders/${customerId}/send-now`, {
+      method: 'POST',
+      body: { override_email: ovEmail }
+    });
+
+    if (res.skipped) {
+      toast(`Skipped — ${res.reason}`);
+    } else {
+      const dest = res.to_email || 'mock log';
+      const ch   = res.channel === 'email' ? '✉️ sent to' : '📋 logged (mock) for';
+      toast(`${ch} ${dest}`);
+    }
+  } catch(err) {
+    toast('Send error: ' + err.message);
+  } finally {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '⚡ Send Now'; }
   }
 }
 

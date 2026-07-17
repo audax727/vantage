@@ -1341,6 +1341,68 @@ def api_delete_reminder(customer_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/ledger/reminders/<int:customer_id>/send-now", methods=["POST"])
+@login_required
+def api_send_reminder_now(customer_id):
+    """Immediately send a reminder to the given customer using the saved
+    override_email (or any email passed in the request body).
+    This lets the user verify the custom email works without waiting for
+    the scheduled time. Does NOT require the reminder to be enabled."""
+    db = get_db()
+    user_id = session["user_id"]
+    d = request.get_json(silent=True) or {}
+
+    # Resolve customer
+    cust = db.execute(
+        "SELECT id, name, email FROM customers WHERE id=? AND user_id=?",
+        (customer_id, user_id)
+    ).fetchone()
+    if not cust:
+        return jsonify({"error": "customer not found"}), 404
+
+    # Priority: body email > saved override_email > customer on-file email
+    body_email = (d.get("override_email") or "").strip() or None
+    to_email = body_email
+
+    if not to_email:
+        cfg = db.execute(
+            "SELECT override_email FROM customer_reminders "
+            "WHERE user_id=? AND customer_id=?",
+            (user_id, customer_id)
+        ).fetchone()
+        if cfg:
+            to_email = cfg["override_email"] or None
+
+    if not to_email:
+        to_email = cust["email"] or None
+
+    # Fetch open balance
+    row = db.execute(
+        "SELECT COALESCE(SUM(amount_due - amount_paid), 0) as balance "
+        "FROM ledger_entries "
+        "WHERE user_id=? AND customer_id=? AND status='open'",
+        (user_id, customer_id)
+    ).fetchone()
+    balance = float(row["balance"] or 0)
+
+    if balance <= 0:
+        return jsonify({"ok": True, "skipped": True,
+                        "reason": "No outstanding balance — nothing to remind about."})
+
+    message = (
+        f"Hi {cust['name']}, this is your daily reminder that you have an "
+        f"outstanding balance of \u20b9{balance:.2f} with us. "
+        f"Please settle it at your earliest convenience \u2014 thank you!"
+    )
+
+    channel = send_notification(user_id, "payment_reminder", message, to_email=to_email)
+    logger.info(
+        f"[send-now] u{user_id}/c{customer_id}: sent \u20b9{balance:.2f} "
+        f"to {to_email or 'mock'} (channel={channel})."
+    )
+    return jsonify({"ok": True, "channel": channel, "to_email": to_email, "balance": balance})
+
+
 @app.route("/api/ledger/<int:customer_id>/statement", methods=["GET"])
 @login_required
 def api_ledger_statement(customer_id):
