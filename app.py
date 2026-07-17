@@ -250,6 +250,17 @@ CREATE TABLE IF NOT EXISTS reminders_sent (
     sent_at TEXT NOT NULL,
     UNIQUE (ledger_entry_id, milestone)
 );
+
+CREATE TABLE IF NOT EXISTS customer_reminders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    enabled INTEGER NOT NULL DEFAULT 1,   -- 1 = active, 0 = paused
+    send_hour INTEGER NOT NULL DEFAULT 9,
+    send_minute INTEGER NOT NULL DEFAULT 0,
+    override_email TEXT,                  -- NULL means use customer's email on file
+    UNIQUE (user_id, customer_id)
+);
 """
 
 
@@ -1060,6 +1071,7 @@ def api_run_collections():
 # APScheduler — start once at boot (safe no-op if APScheduler is missing)
 # ----------------------------------------------------------------------------
 def _start_scheduler():
+    global _scheduler
     if not APSCHEDULER_AVAILABLE:
         logger.warning(
             "[collections] APScheduler not installed — daily reminders disabled. "
@@ -1072,6 +1084,8 @@ def _start_scheduler():
 
     try:
         scheduler = BackgroundScheduler()
+
+        # ── Milestone collections job (existing) ──────────────────────────
         scheduler.add_job(
             scheduled_collections_job,
             trigger="cron",
@@ -1080,9 +1094,28 @@ def _start_scheduler():
             id="daily_collections",
             replace_existing=True,
         )
+
+        # ── Per-customer daily reminders: reload from DB on boot ──────────
+        try:
+            db = _get_scheduler_db()
+            active = db.execute(
+                "SELECT user_id, customer_id, send_hour, send_minute "
+                "FROM customer_reminders WHERE enabled=1"
+            ).fetchall()
+            db.close()
+            for row in active:
+                _schedule_customer_job(
+                    scheduler, row["user_id"], row["customer_id"],
+                    row["send_hour"], row["send_minute"]
+                )
+            logger.info(f"[daily-reminder] Loaded {len(active)} per-customer job(s) from DB.")
+        except Exception as exc:
+            logger.warning(f"[daily-reminder] Could not load per-customer jobs from DB: {exc}")
+
         scheduler.start()
+        _scheduler = scheduler
         logger.info(
-            f"[collections] Scheduler started — daily job will run at "
+            f"[collections] Scheduler started — milestone job at "
             f"{run_hour:02d}:{run_minute:02d} server local time."
         )
     except Exception as exc:
@@ -1092,6 +1125,176 @@ def _start_scheduler():
 
 
 _start_scheduler()
+
+
+# ----------------------------------------------------------------------------
+# Per-customer daily reminders — API + scheduler wiring
+# ----------------------------------------------------------------------------
+
+def _schedule_customer_job(scheduler, user_id, customer_id, send_hour, send_minute):
+    """Register (or replace) a single per-customer cron job in the scheduler."""
+    job_id = f"daily_reminder_u{user_id}_c{customer_id}"
+    scheduler.add_job(
+        _send_customer_reminder,
+        trigger="cron",
+        hour=send_hour,
+        minute=send_minute,
+        args=[user_id, customer_id],
+        id=job_id,
+        replace_existing=True,
+    )
+    return job_id
+
+
+def _remove_customer_job(scheduler, user_id, customer_id):
+    job_id = f"daily_reminder_u{user_id}_c{customer_id}"
+    try:
+        scheduler.remove_job(job_id)
+    except Exception:
+        pass
+
+
+def _send_customer_reminder(user_id, customer_id):
+    """Send one daily reminder email to a customer who has an open balance.
+    Reuses send_notification() exactly. Runs inside an app context."""
+    with app.app_context():
+        try:
+            db = _get_scheduler_db()
+            try:
+                # Fetch reminder config — bail out if disabled
+                cfg = db.execute(
+                    "SELECT * FROM customer_reminders "
+                    "WHERE user_id=? AND customer_id=? AND enabled=1",
+                    (user_id, customer_id)
+                ).fetchone()
+                if not cfg:
+                    return
+
+                # Fetch open ledger balance for this customer
+                row = db.execute(
+                    "SELECT COALESCE(SUM(amount_due - amount_paid), 0) as balance "
+                    "FROM ledger_entries "
+                    "WHERE user_id=? AND customer_id=? AND status='open'",
+                    (user_id, customer_id)
+                ).fetchone()
+                balance = float(row["balance"] or 0)
+                if balance <= 0:
+                    logger.info(f"[daily-reminder] u{user_id}/c{customer_id}: balance ₹0 — skipping.")
+                    return
+
+                # Resolve destination email
+                to_email = cfg["override_email"] or None
+                if not to_email:
+                    cust = db.execute(
+                        "SELECT name, email FROM customers WHERE id=?", (customer_id,)
+                    ).fetchone()
+                    to_email = cust["email"] if cust else None
+                    cust_name = cust["name"] if cust else "Customer"
+                else:
+                    cust = db.execute(
+                        "SELECT name FROM customers WHERE id=?", (customer_id,)
+                    ).fetchone()
+                    cust_name = cust["name"] if cust else "Customer"
+
+                message = (
+                    f"Hi {cust_name}, this is your daily reminder that you have an "
+                    f"outstanding balance of \u20b9{balance:.2f} with us. "
+                    f"Please settle it at your earliest convenience \u2014 thank you!"
+                )
+
+                send_notification(user_id, "payment_reminder", message, to_email=to_email)
+                logger.info(
+                    f"[daily-reminder] u{user_id}/c{customer_id}: sent \u20b9{balance:.2f} reminder "
+                    f"to {to_email or 'mock'}."
+                )
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.error(f"[daily-reminder] u{user_id}/c{customer_id}: failed — {exc}", exc_info=True)
+
+
+# Module-level scheduler handle so API routes can reschedule live jobs
+_scheduler = None
+
+
+@app.route("/api/ledger/reminders", methods=["GET"])
+@login_required
+def api_get_reminders():
+    """Return all per-customer reminder configs for the logged-in user."""
+    db = get_db()
+    user_id = session["user_id"]
+    rows = db.execute(
+        "SELECT cr.*, c.name as customer_name, c.email as customer_email "
+        "FROM customer_reminders cr "
+        "JOIN customers c ON c.id = cr.customer_id "
+        "WHERE cr.user_id=?",
+        (user_id,)
+    ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/ledger/reminders", methods=["POST"])
+@login_required
+def api_upsert_reminder():
+    """Create or update a per-customer daily reminder schedule.
+    Body: { customer_id, enabled, send_hour, send_minute, override_email }
+    """
+    db = get_db()
+    user_id = session["user_id"]
+    d = request.get_json()
+    customer_id  = int(d["customer_id"])
+    enabled      = int(bool(d.get("enabled", True)))
+    send_hour    = int(d.get("send_hour",   9))
+    send_minute  = int(d.get("send_minute", 0))
+    override_email = (d.get("override_email") or "").strip() or None
+
+    # Validate customer belongs to this user
+    cust = db.execute(
+        "SELECT id FROM customers WHERE id=? AND user_id=?", (customer_id, user_id)
+    ).fetchone()
+    if not cust:
+        return jsonify({"error": "customer not found"}), 404
+
+    db.execute(
+        "INSERT INTO customer_reminders "
+        "(user_id, customer_id, enabled, send_hour, send_minute, override_email) "
+        "VALUES (?,?,?,?,?,?) "
+        "ON CONFLICT(user_id, customer_id) DO UPDATE SET "
+        "enabled=excluded.enabled, send_hour=excluded.send_hour, "
+        "send_minute=excluded.send_minute, override_email=excluded.override_email",
+        (user_id, customer_id, enabled, send_hour, send_minute, override_email)
+    )
+    db.commit()
+
+    # Reschedule live if the scheduler is running
+    if _scheduler and _scheduler.running:
+        if enabled:
+            _schedule_customer_job(_scheduler, user_id, customer_id, send_hour, send_minute)
+            logger.info(
+                f"[daily-reminder] Scheduled u{user_id}/c{customer_id} at "
+                f"{send_hour:02d}:{send_minute:02d}."
+            )
+        else:
+            _remove_customer_job(_scheduler, user_id, customer_id)
+            logger.info(f"[daily-reminder] Disabled u{user_id}/c{customer_id}.")
+
+    return jsonify({"ok": True})
+
+
+@app.route("/api/ledger/reminders/<int:customer_id>", methods=["DELETE"])
+@login_required
+def api_delete_reminder(customer_id):
+    """Remove a per-customer daily reminder schedule entirely."""
+    db = get_db()
+    user_id = session["user_id"]
+    db.execute(
+        "DELETE FROM customer_reminders WHERE user_id=? AND customer_id=?",
+        (user_id, customer_id)
+    )
+    db.commit()
+    if _scheduler and _scheduler.running:
+        _remove_customer_job(_scheduler, user_id, customer_id)
+    return jsonify({"ok": True})
 
 
 @app.route("/api/ledger/<int:customer_id>/statement", methods=["GET"])

@@ -22,6 +22,150 @@
     color: #10b981;
     border-color: #10b981;
   }
+
+  /* ── Manage Reminders modal ──────────────────────────── */
+  .reminder-modal-wrap {
+    max-width: 680px;
+  }
+  .reminder-modal-wrap h3 {
+    margin-bottom: 4px;
+  }
+  .reminder-modal-wrap .modal-sub {
+    font-size: 13px;
+    opacity: .55;
+    margin-bottom: 20px;
+  }
+
+  /* Customer reminder rows */
+  .rm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .rm-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--bg-elevated, rgba(255,255,255,.04));
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    transition: border-color .2s;
+  }
+  .rm-row.rm-active { border-color: rgba(16,185,129,.35); }
+
+  .rm-customer-name {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rm-customer-email {
+    font-size: 11px;
+    opacity: .45;
+    margin-top: 1px;
+  }
+
+  /* Toggle switch */
+  .rm-toggle {
+    position: relative;
+    width: 38px;
+    height: 21px;
+    flex-shrink: 0;
+  }
+  .rm-toggle input { opacity: 0; width: 0; height: 0; }
+  .rm-slider {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,.12);
+    border-radius: 21px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .rm-slider::before {
+    content: '';
+    position: absolute;
+    left: 3px; top: 3px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .2s;
+  }
+  .rm-toggle input:checked + .rm-slider { background: #10b981; }
+  .rm-toggle input:checked + .rm-slider::before { transform: translateX(17px); }
+
+  /* Time input */
+  .rm-time {
+    width: 90px;
+    font-size: 13px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border, rgba(255,255,255,.12));
+    background: transparent;
+    color: inherit;
+    font-family: 'Fira Code', monospace;
+    text-align: center;
+  }
+  .rm-time:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* Override email input */
+  .rm-email-wrap { position: relative; }
+  .rm-email {
+    width: 100%;
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border, rgba(255,255,255,.12));
+    background: transparent;
+    color: inherit;
+    box-sizing: border-box;
+  }
+  .rm-email:disabled { opacity: .3; cursor: not-allowed; }
+  .rm-email::placeholder { opacity: .35; }
+
+  /* Save per-row button */
+  .rm-save-btn {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(16,185,129,.4);
+    background: transparent;
+    color: #10b981;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, opacity .15s;
+  }
+  .rm-save-btn:hover { background: rgba(16,185,129,.12); }
+  .rm-save-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  .rm-empty {
+    text-align: center;
+    padding: 32px;
+    opacity: .4;
+    font-size: 14px;
+  }
+
+  /* Floating Manage Reminders button */
+  .remind-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(16,185,129,.45);
+    background: rgba(16,185,129,.07);
+    color: #10b981;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s, border-color .2s;
+  }
+  .remind-fab:hover { background: rgba(16,185,129,.15); border-color: #10b981; }
 </style>
 
 <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
@@ -30,10 +174,19 @@
     <h1 class="page-title">Ledger</h1>
     <p class="page-subtitle">Every unpaid or partially paid sale lands here automatically.</p>
   </div>
-  <button class="btn btn-outline" onclick="sendBatchReminders()">
-    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-right:6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-    Send Batch Reminders
-  </button>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <button class="remind-fab" onclick="openRemindersModal()" id="manageRemindersBtn">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+      Manage Reminders
+    </button>
+    <button class="btn btn-outline" onclick="sendBatchReminders()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin-right:6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+      Send Batch Reminders
+    </button>
+  </div>
 </div>
 
 <div class="table-wrap">
@@ -45,6 +198,7 @@
 </table>
 </div>
 
+<!-- ── Collect Payment modal ───────────────────────────────── -->
 <div class="modal-backdrop" id="collectModal">
   <div class="modal">
     <h3>Collect payment</h3>
@@ -58,10 +212,33 @@
     </form>
   </div>
 </div>
+
+<!-- ── Manage Reminders modal ──────────────────────────────── -->
+<div class="modal-backdrop" id="remindersModal">
+  <div class="modal reminder-modal-wrap">
+    <h3>Manage Daily Reminders</h3>
+    <p class="modal-sub">
+      Enable a daily email to each customer who has an outstanding balance.
+      Set the time and an optional override email per customer.
+    </p>
+
+    <div class="rm-list" id="rmList">
+      <div class="rm-empty" id="rmLoading">Loading customers…</div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:18px;">
+      <button type="button" class="btn btn-outline"
+              onclick="document.getElementById('remindersModal').classList.remove('show')">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+/* ── Ledger table ─────────────────────────────────────────── */
 async function loadLedger() {
   const entries = await api('/api/ledger');
   const rows = document.getElementById('ledgerRows');
@@ -108,6 +285,146 @@ async function sendBatchReminders() {
     toast(`Sent ${res.count} reminders`);
   } catch(err) { toast(err.message); }
 }
+
+/* ── Manage Reminders modal ───────────────────────────────── */
+let _remindersMap = {};   // keyed by customer_id — existing configs from DB
+
+async function openRemindersModal() {
+  document.getElementById('remindersModal').classList.add('show');
+  await renderRemindersModal();
+}
+
+async function renderRemindersModal() {
+  const list = document.getElementById('rmList');
+  list.innerHTML = '<div class="rm-empty">Loading…</div>';
+
+  try {
+    // Load all open-ledger customers and existing reminder configs in parallel
+    const [ledger, configs] = await Promise.all([
+      api('/api/ledger'),
+      api('/api/ledger/reminders')
+    ]);
+
+    _remindersMap = {};
+    configs.forEach(c => { _remindersMap[c.customer_id] = c; });
+
+    // De-duplicate customers from the ledger
+    const seen = new Set();
+    const customers = [];
+    ledger.forEach(e => {
+      if (!seen.has(e.customer_id)) {
+        seen.add(e.customer_id);
+        customers.push({ id: e.customer_id, name: e.customer_name, email: e.email || '' });
+      }
+    });
+
+    if (!customers.length) {
+      list.innerHTML = '<div class="rm-empty">No open ledger entries — nothing to remind.</div>';
+      return;
+    }
+
+    list.innerHTML = customers.map(c => {
+      const cfg = _remindersMap[c.id] || {};
+      const enabled   = cfg.enabled != null ? !!cfg.enabled : false;
+      const hour      = cfg.send_hour   != null ? cfg.send_hour   : 9;
+      const minute    = cfg.send_minute != null ? cfg.send_minute : 0;
+      const ovEmail   = cfg.override_email || '';
+      const timeVal   = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+      const rowActive = enabled ? 'rm-active' : '';
+
+      return `
+        <div class="rm-row ${rowActive}" id="rmrow-${c.id}">
+          <!-- Customer info -->
+          <div>
+            <div class="rm-customer-name">${c.name}</div>
+            <div class="rm-customer-email">${c.email || 'no email on file'}</div>
+          </div>
+
+          <!-- Toggle -->
+          <label class="rm-toggle" title="${enabled ? 'Disable' : 'Enable'} daily reminder">
+            <input type="checkbox" id="rmtoggle-${c.id}" ${enabled ? 'checked' : ''}
+                   onchange="onRmToggle(${c.id})">
+            <span class="rm-slider"></span>
+          </label>
+
+          <!-- Time picker -->
+          <input type="time" class="rm-time" id="rmtime-${c.id}" value="${timeVal}"
+                 ${!enabled ? 'disabled' : ''} title="Reminder time (server local)">
+
+          <!-- Override email -->
+          <input type="email" class="rm-email" id="rmemail-${c.id}"
+                 placeholder="${c.email || 'customer email'}"
+                 value="${ovEmail}" ${!enabled ? 'disabled' : ''}
+                 title="Leave blank to use customer's email on file">
+
+          <!-- Save button -->
+          <button class="rm-save-btn" id="rmsave-${c.id}"
+                  onclick="saveReminder(${c.id})" ${!enabled ? 'disabled' : ''}>
+            Save
+          </button>
+        </div>
+      `;
+    }).join('');
+
+  } catch(err) {
+    list.innerHTML = `<div class="rm-empty">Error: ${err.message}</div>`;
+  }
+}
+
+function onRmToggle(customerId) {
+  const enabled = document.getElementById(`rmtoggle-${customerId}`).checked;
+  const row     = document.getElementById(`rmrow-${customerId}`);
+  const timeEl  = document.getElementById(`rmtime-${customerId}`);
+  const emailEl = document.getElementById(`rmemail-${customerId}`);
+  const saveBtn = document.getElementById(`rmsave-${customerId}`);
+
+  timeEl.disabled  = !enabled;
+  emailEl.disabled = !enabled;
+  saveBtn.disabled = !enabled;
+  row.classList.toggle('rm-active', enabled);
+
+  // Auto-save the toggle state immediately (disable = OFF, enable = re-enable with saved time)
+  if (!enabled) {
+    saveReminder(customerId, false);
+  }
+}
+
+async function saveReminder(customerId, forceEnabled) {
+  const enabled  = forceEnabled !== undefined ? forceEnabled
+                                              : document.getElementById(`rmtoggle-${customerId}`).checked;
+  const timeVal  = document.getElementById(`rmtime-${customerId}`).value || '09:00';
+  const [h, m]   = timeVal.split(':').map(Number);
+  const ovEmail  = (document.getElementById(`rmemail-${customerId}`).value || '').trim();
+
+  const saveBtn  = document.getElementById(`rmsave-${customerId}`);
+  if (saveBtn) saveBtn.textContent = '…';
+
+  try {
+    await api('/api/ledger/reminders', {
+      method: 'POST',
+      body: {
+        customer_id:    customerId,
+        enabled:        enabled,
+        send_hour:      h,
+        send_minute:    m,
+        override_email: ovEmail
+      }
+    });
+    toast(enabled
+      ? `Reminder set for ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} daily`
+      : 'Reminder disabled');
+    if (saveBtn) saveBtn.textContent = 'Saved ✓';
+    setTimeout(() => { if (saveBtn) saveBtn.textContent = 'Save'; }, 1800);
+  } catch(err) {
+    toast('Error: ' + err.message);
+    if (saveBtn) saveBtn.textContent = 'Save';
+  }
+}
+
+/* Close reminders modal on backdrop click */
+document.getElementById('remindersModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
 
 loadLedger();
 </script>
