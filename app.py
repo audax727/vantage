@@ -957,8 +957,19 @@ def api_send_reminder(entry_id):
         return jsonify({"error": "not found"}), 404
 
     due = entry["amount_due"] - entry["amount_paid"]
-    message = f"Hi {entry['customer_name']}, this is a reminder that you have an outstanding balance of {due:.2f}. Thank you!"
-    channel, _ = send_notification(user_id, "payment_reminder", message, to_email=entry["email"])
+    message = (
+        f"Dear {entry['customer_name']},\n\n"
+        f"This is a friendly payment reminder from your supplier.\n\n"
+        f"You have an outstanding balance of ₹{due:.2f} that is currently due.\n\n"
+        f"Please arrange to settle this at your earliest convenience.\n\n"
+        f"If you have already made the payment, kindly ignore this message.\n\n"
+        f"Thank you for your business!\n\n"
+        f"— Sent via Vantage"
+    )
+    channel, smtp_error = send_notification(user_id, "payment_reminder", message, to_email=entry["email"])
+    if not entry["email"]:
+        return jsonify({"ok": False, "error": "This customer has no email address on file. Please update their profile first."})
+
     return jsonify({"ok": True, "channel": channel})
 
 
@@ -1180,8 +1191,6 @@ def _start_scheduler():
         )
 
 
-_start_scheduler()
-
 
 # ----------------------------------------------------------------------------
 # Per-customer daily reminders — API + scheduler wiring
@@ -1208,6 +1217,10 @@ def _remove_customer_job(scheduler, user_id, customer_id):
         scheduler.remove_job(job_id)
     except Exception:
         pass
+
+
+# Start the scheduler AFTER all helper functions are defined
+_start_scheduler()
 
 
 def _send_customer_reminder(user_id, customer_id):
