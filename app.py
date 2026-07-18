@@ -1371,73 +1371,76 @@ def api_delete_reminder(customer_id):
 @app.route("/api/ledger/reminders/<int:customer_id>/send-now", methods=["POST"])
 @login_required
 def api_send_reminder_now(customer_id):
-    """Immediately send a reminder to the given customer using the saved
-    override_email (or any email passed in the request body).
-    This lets the user verify the custom email works without waiting for
-    the scheduled time. Does NOT require the reminder to be enabled."""
-    db = get_db()
-    user_id = session["user_id"]
-    d = request.get_json(silent=True) or {}
+    import traceback
+    try:
+        db = get_db()
+        user_id = session["user_id"]
+        d = request.get_json(silent=True) or {}
 
-    # Resolve customer
-    cust = db.execute(
-        "SELECT id, name, email FROM customers WHERE id=? AND user_id=?",
-        (customer_id, user_id)
-    ).fetchone()
-    if not cust:
-        return jsonify({"error": "customer not found"}), 404
+        # Resolve customer
+        cust = db.execute(
+            "SELECT id, name, email FROM customers WHERE id=? AND user_id=?",
+            (customer_id, user_id)
+        ).fetchone()
+        if not cust:
+            return jsonify({"error": "customer not found"}), 404
 
-    # Priority: body email > saved override_email > customer on-file email
-    body_email = (d.get("override_email") or "").strip() or None
-    to_email = body_email
+        # Priority: body email > saved override_email > customer on-file email
+        body_email = (d.get("override_email") or "").strip() or None
+        to_email = body_email
 
-    if not to_email:
-        cfg = db.execute(
-            "SELECT override_email FROM customer_reminders "
-            "WHERE user_id=? AND customer_id=?",
+        if not to_email:
+            cfg = db.execute(
+                "SELECT override_email FROM customer_reminders "
+                "WHERE user_id=? AND customer_id=?",
+                (user_id, customer_id)
+            ).fetchone()
+            if cfg:
+                to_email = cfg["override_email"] or None
+
+        if not to_email:
+            to_email = cust["email"] or None
+
+        # Fetch open balance
+        row = db.execute(
+            "SELECT COALESCE(SUM(amount_due - amount_paid), 0) as balance "
+            "FROM ledger_entries "
+            "WHERE user_id=? AND customer_id=? AND status='open'",
             (user_id, customer_id)
         ).fetchone()
-        if cfg:
-            to_email = cfg["override_email"] or None
+        balance = float(row["balance"] or 0)
 
-    if not to_email:
-        to_email = cust["email"] or None
+        if balance <= 0:
+            return jsonify({"ok": True, "skipped": True,
+                            "reason": "No outstanding balance — nothing to remind about."})
 
-    # Fetch open balance
-    row = db.execute(
-        "SELECT COALESCE(SUM(amount_due - amount_paid), 0) as balance "
-        "FROM ledger_entries "
-        "WHERE user_id=? AND customer_id=? AND status='open'",
-        (user_id, customer_id)
-    ).fetchone()
-    balance = float(row["balance"] or 0)
+        message = (
+            f"Dear {cust['name']},\n\n"
+            f"This is a friendly payment reminder from your supplier.\n\n"
+            f"You have an outstanding balance of \u20b9{balance:.2f} that is currently due.\n\n"
+            f"Please arrange to settle this at your earliest convenience.\n\n"
+            f"If you have already made the payment, kindly ignore this message.\n\n"
+            f"Thank you for your business!\n\n"
+            f"\u2014 Sent via Vantage"
+        )
 
-    if balance <= 0:
-        return jsonify({"ok": True, "skipped": True,
-                        "reason": "No outstanding balance — nothing to remind about."})
-
-    message = (
-        f"Hi {cust['name']}, this is your daily reminder that you have an "
-        f"outstanding balance of \u20b9{balance:.2f} with us. "
-        f"Please settle it at your earliest convenience \u2014 thank you!"
-    )
-
-    channel, smtp_error = send_notification(user_id, "payment_reminder", message, to_email=to_email)
-    logger.info(
-        f"[send-now] u{user_id}/c{customer_id}: channel={channel} "
-        f"to={to_email or 'none'} error={smtp_error}"
-    )
-    if channel == "email":
-        return jsonify({"ok": True, "channel": channel, "to_email": to_email, "balance": balance})
-    else:
-        # Send failed — return the real reason so the UI can show it
-        return jsonify({
-            "ok": False,
-            "channel": channel,
-            "to_email": to_email,
-            "balance": balance,
-            "error": smtp_error or "Email not sent — check environment variables."
-        })
+        channel, smtp_error = send_notification(user_id, "payment_reminder", message, to_email=to_email)
+        logger.info(
+            f"[send-now] u{user_id}/c{customer_id}: channel={channel} "
+            f"to={to_email or 'none'} error={smtp_error}"
+        )
+        if channel == "email":
+            return jsonify({"ok": True, "channel": channel, "to_email": to_email, "balance": balance})
+        else:
+            return jsonify({
+                "ok": False,
+                "channel": channel,
+                "to_email": to_email,
+                "balance": balance,
+                "error": smtp_error or "Email not sent — check environment variables."
+            })
+    except Exception as e:
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 @app.route("/api/ledger/<int:customer_id>/statement", methods=["GET"])
