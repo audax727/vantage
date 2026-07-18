@@ -323,26 +323,33 @@ def current_user():
 def send_notification(user_id, kind, message, to_email=None):
     db = get_db()
     channel = "mock"
+    smtp_error = None
+
     if EMAIL_ADDRESS and EMAIL_APP_PASSWORD and to_email:
         try:
-            msg = MIMEText(message)
-            msg["Subject"] = "Vantage Notification"
-            msg["From"] = EMAIL_ADDRESS
+            msg = MIMEText(message, 'plain', 'utf-8')
+            msg["Subject"] = "Payment Reminder — Vantage"
+            msg["From"] = f"Vantage <{EMAIL_ADDRESS}>"
             msg["To"] = to_email
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
                 server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
-                server.sendmail(EMAIL_ADDRESS, to_email, msg.as_string())
+                server.sendmail(EMAIL_ADDRESS, [to_email], msg.as_string())
             channel = "email"
         except Exception as e:
-            print(f"[notify] email send failed, falling back to mock: {e}")
+            smtp_error = str(e)
+            logger.error(f"[notify] SMTP send failed to {to_email}: {e}")
             channel = "mock"
+    elif EMAIL_ADDRESS and EMAIL_APP_PASSWORD and not to_email:
+        smtp_error = "No recipient email address provided."
+    elif not EMAIL_ADDRESS or not EMAIL_APP_PASSWORD:
+        smtp_error = "EMAIL_ADDRESS or EMAIL_APP_PASSWORD not set in environment."
 
     db.execute(
         "INSERT INTO notifications (user_id, kind, message, channel, sent_at) VALUES (?,?,?,?,?)",
         (user_id, kind, message, channel, datetime.utcnow().isoformat()),
     )
     db.commit()
-    return channel
+    return channel, smtp_error
 
 
 
@@ -946,7 +953,7 @@ def api_send_reminder(entry_id):
 
     due = entry["amount_due"] - entry["amount_paid"]
     message = f"Hi {entry['customer_name']}, this is a reminder that you have an outstanding balance of {due:.2f}. Thank you!"
-    channel = send_notification(user_id, "payment_reminder", message, to_email=entry["email"])
+    channel, _ = send_notification(user_id, "payment_reminder", message, to_email=entry["email"])
     return jsonify({"ok": True, "channel": channel})
 
 
@@ -967,7 +974,7 @@ def api_batch_remind():
     for entry in entries:
         due = entry["amount_due"] - entry["amount_paid"]
         message = f"Hi {entry['customer_name']}, this is a friendly reminder that you have an outstanding balance of ₹{due:.2f} pending for over 30 days. Thank you!"
-        send_notification(user_id, "payment_reminder", message, to_email=entry["email"])
+        send_notification(user_id, "payment_reminder", message, to_email=entry["email"])  # ignore (channel, error)
         count += 1
         
     return jsonify({"ok": True, "count": count})
@@ -1065,7 +1072,7 @@ def _run_collections_logic():
                         "payment_reminder",
                         message,
                         to_email=entry["email"] or None
-                    )
+                    )  # returns (channel, error) — ignore both in scheduled context
 
                 # Record the milestone so it's never sent again
                 try:
@@ -1246,7 +1253,7 @@ def _send_customer_reminder(user_id, customer_id):
                     f"Please settle it at your earliest convenience \u2014 thank you!"
                 )
 
-                send_notification(user_id, "payment_reminder", message, to_email=to_email)
+                send_notification(user_id, "payment_reminder", message, to_email=to_email)  # ignore (channel, error)
                 logger.info(
                     f"[daily-reminder] u{user_id}/c{customer_id}: sent \u20b9{balance:.2f} reminder "
                     f"to {to_email or 'mock'}."
@@ -1395,12 +1402,22 @@ def api_send_reminder_now(customer_id):
         f"Please settle it at your earliest convenience \u2014 thank you!"
     )
 
-    channel = send_notification(user_id, "payment_reminder", message, to_email=to_email)
+    channel, smtp_error = send_notification(user_id, "payment_reminder", message, to_email=to_email)
     logger.info(
-        f"[send-now] u{user_id}/c{customer_id}: sent \u20b9{balance:.2f} "
-        f"to {to_email or 'mock'} (channel={channel})."
+        f"[send-now] u{user_id}/c{customer_id}: channel={channel} "
+        f"to={to_email or 'none'} error={smtp_error}"
     )
-    return jsonify({"ok": True, "channel": channel, "to_email": to_email, "balance": balance})
+    if channel == "email":
+        return jsonify({"ok": True, "channel": channel, "to_email": to_email, "balance": balance})
+    else:
+        # Send failed — return the real reason so the UI can show it
+        return jsonify({
+            "ok": False,
+            "channel": channel,
+            "to_email": to_email,
+            "balance": balance,
+            "error": smtp_error or "Email not sent — check environment variables."
+        })
 
 
 @app.route("/api/ledger/<int:customer_id>/statement", methods=["GET"])

@@ -472,11 +472,14 @@ async function sendReminderNow(customerId) {
     });
 
     if (res.skipped) {
-      toast(`Skipped — ${res.reason}`);
+      toast(`⚠️ Skipped — ${res.reason}`);
+    } else if (res.ok === false && res.error) {
+      // Real SMTP error — show it so the user knows what to fix
+      toast(`❌ Email failed: ${res.error}`, 'error');
+    } else if (res.channel === 'email') {
+      toast(`✉️ Email sent to ${res.to_email}`);
     } else {
-      const dest = res.to_email || 'mock log';
-      const ch   = res.channel === 'email' ? '✉️ sent to' : '📋 logged (mock) for';
-      toast(`${ch} ${dest}`);
+      toast(`❌ Not sent — credentials missing on server. Check Render env vars.`, 'error');
     }
   } catch(err) {
     toast('Send error: ' + err.message);
