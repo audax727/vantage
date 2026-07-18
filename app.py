@@ -1219,8 +1219,7 @@ def _remove_customer_job(scheduler, user_id, customer_id):
         pass
 
 
-# Start the scheduler AFTER all helper functions are defined
-_start_scheduler()
+
 
 
 def _send_customer_reminder(user_id, customer_id):
@@ -1284,6 +1283,9 @@ def _send_customer_reminder(user_id, customer_id):
 
 # Module-level scheduler handle so API routes can reschedule live jobs
 _scheduler = None
+
+# Start scheduler NOW — all helper functions (_send_customer_reminder etc.) are defined above
+_start_scheduler()
 
 
 @app.route("/api/ledger/reminders", methods=["GET"])
