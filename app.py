@@ -333,12 +333,12 @@ def send_notification(user_id, kind, message, to_email=None):
             msg["Subject"] = "Payment Reminder — Vantage"
             msg["From"] = f"Vantage <{EMAIL_ADDRESS}>"
             msg["To"] = to_email
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
                 server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
                 server.sendmail(EMAIL_ADDRESS, [to_email], msg.as_string())
             channel = "email"
         except Exception as e:
-            smtp_error = str(e)
+            smtp_error = str(e) or "SMTP connection timed out. Render may be blocking port 465."
             logger.error(f"[notify] SMTP send failed to {to_email}: {e}")
             channel = "mock"
     elif EMAIL_ADDRESS and EMAIL_APP_PASSWORD and not to_email:
