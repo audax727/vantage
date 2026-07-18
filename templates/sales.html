@@ -129,10 +129,18 @@ function updateTotal() {
         lineTotal = lineTotal - (lineTotal * (discountPct / 100));
     }
     
-    totalTax += lineTotal * (gst / 100.0);
+    // Inclusive GST formula: Tax = Price * (GST / (100 + GST))
+    const taxPortion = lineTotal * (gst / (100.0 + gst));
+    totalTax += taxPortion;
   });
   
-  const finalTotal = taxableValue + totalTax;
+  // Since prices are inclusive, gross total is subtotal minus discount.
+  let grossTotal = subtotal;
+  if (discountPct > 0) {
+    grossTotal = subtotal - (subtotal * (discountPct / 100));
+  }
+  const finalTotal = grossTotal; 
+  taxableValue = finalTotal - totalTax; // Back out tax to show true taxable base
   
   // We can update the UI running total label to show the breakdown
   document.getElementById('runningTotal').innerHTML = 

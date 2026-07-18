@@ -44,7 +44,7 @@ DEC2FLOAT = psycopg2.extensions.new_type(
     lambda value, curs: float(value) if value is not None else None)
 psycopg2.extensions.register_type(DEC2FLOAT)
 
-load_dotenv()
+print("DOTENV LOADED:", load_dotenv())
 
 # ----------------------------------------------------------------------------
 # App config
@@ -60,6 +60,8 @@ if DATABASE_URL:
         DATABASE_URL += "&sslmode=require"
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
+print("APP SECRET KEY IS:", app.secret_key)
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS", "")
@@ -376,17 +378,17 @@ def record_sale(user_id, customer_id, items, amount_paid, channel="in_store", ti
         if product["current_stock"] < it["qty"]:
             raise ValueError(f"Insufficient stock for {product['name']}")
             
-        line_total = float(product["sell_price"]) * float(it["qty"])
+        line_total_inclusive = float(product["sell_price"]) * float(it["qty"])
         rate = float(product["gst_rate"]) if product.get("gst_rate") is not None else 18.0
-        tax_amount = line_total * (rate / 100.0)
+        
+        # Inclusive GST calculation
+        tax_amount = line_total_inclusive * (rate / (100.0 + rate))
         
         total_cgst += tax_amount / 2
         total_sgst += tax_amount / 2
         
-        total_amount += line_total
+        total_amount += line_total_inclusive
         resolved_items.append((product, it["qty"], float(product["sell_price"])))
-
-    total_amount += total_cgst + total_sgst
 
     if amount_paid >= total_amount - 1e-9:
         payment_status = "paid"
@@ -590,6 +592,7 @@ def signup_page():
     db.execute("INSERT INTO locations (user_id, name, is_default) VALUES (?,?,1)", (user_id, "Main Store"))
     db.commit()
 
+    session.permanent = True
     session["user_id"] = user_id
     return jsonify({"ok": True, "redirect": url_for("dashboard")})
 
@@ -608,6 +611,7 @@ def login_page():
     if not user or not user["password_hash"] or not check_password_hash(user["password_hash"], password):
         return jsonify({"error": "Invalid email or password"}), 401
 
+    session.permanent = True
     session["user_id"] = user["id"]
     return jsonify({"ok": True, "redirect": url_for("dashboard")})
 
@@ -641,6 +645,7 @@ def google_callback():
     else:
         user_id = user["id"]
 
+    session.permanent = True
     session["user_id"] = user_id
     return redirect(url_for("dashboard"))
 
@@ -648,7 +653,7 @@ def google_callback():
 @app.route("/logout")
 def logout():
     session.pop("user_id", None)
-    return redirect(url_for("landing"))
+    return redirect(url_for("login_page"))
 
 
 @app.route("/api/settings", methods=["POST"])
@@ -1694,9 +1699,9 @@ def api_quotations():
             product = db.execute("SELECT gst_rate FROM products WHERE id = ?", (it["product_id"],)).fetchone()
             rate = float(product["gst_rate"]) if product and product["gst_rate"] is not None else 18.0
             
-            # Calculate tax on discounted price
+            # Calculate inclusive tax on discounted price
             discounted_line = float(it["line_total"]) * (1 - discount_pct/100.0)
-            tax_amount = discounted_line * (rate / 100.0)
+            tax_amount = discounted_line * (rate / (100.0 + rate))
             
             total_cgst += tax_amount / 2
             total_sgst += tax_amount / 2
@@ -1706,8 +1711,8 @@ def api_quotations():
             
         items_json = json.dumps(items)
         
-        # Add taxes to the total_amount
-        final_total = total_amount + total_cgst + total_sgst
+        # total_amount is already inclusive
+        final_total = total_amount
         
         cur = db.execute(
             "INSERT INTO quotations (user_id, customer_id, customer_name, items_json, subtotal, discount_pct, total_amount, cgst_amount, sgst_amount, notes, created_at) "

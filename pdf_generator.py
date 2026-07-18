@@ -569,14 +569,18 @@ def generate_quotation(store_name, quote_id, customer_name, customer_phone, cust
 
     # Subtotal / Discount / Taxes / Total
     elements.append(Spacer(1, 6))
+    
     totals = [
-        ["", "", "", "", "Subtotal", f"₹ {subtotal:.2f}"],
+        ["", "", "", "", "Gross Total", f"₹ {subtotal:.2f}"],
     ]
     if discount_pct > 0:
         disc_amt = subtotal * discount_pct / 100
         totals.append(["", "", "", "", f"Discount ({discount_pct:.1f}%)", f"- ₹ {disc_amt:.2f}"])
         
-    taxable_val = subtotal - (subtotal * discount_pct / 100) if discount_pct > 0 else subtotal
+    net_total = subtotal - (subtotal * discount_pct / 100) if discount_pct > 0 else subtotal
+    total_tax = cgst_amount + sgst_amount
+    taxable_val = net_total - total_tax
+
     totals.append(["", "", "", "", "Taxable Value", f"₹ {taxable_val:.2f}"])
     
     if cgst_amount > 0 or sgst_amount > 0:

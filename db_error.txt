@@ -1,0 +1,1 @@
+could not translate host name "db.kipuyfpcabhiwkszncxv.supabase.co" to address: Name or service not known
