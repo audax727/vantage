@@ -47,6 +47,7 @@
       <div class="grid grid-2">
         <div class="field"><label>Current stock</label><input name="current_stock" type="number" step="0.01" required></div>
         <div class="field"><label>Reorder threshold</label><input name="reorder_threshold" type="number" step="0.01" value="5"></div>
+      </div>
       <div class="grid grid-2">
         <div class="field"><label>Unit</label><input name="unit" value="pcs"></div>
         <div class="field"><label>GST Rate (%)</label><input name="gst_rate" type="number" step="0.1" value="18"></div>
@@ -131,12 +132,12 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     closeAddModal();
     e.target.reset();
     toast('Product added');
-    loadProducts();
+    loadAll();
   } catch (err) { toast(err.message); }
 });
 
 function openRestock(id) {
-  document.querySelector('#restockForm [name=product_id]').value = id;
+  document.querySelector('#restockForm [name="product_id"]').value = id;
   document.getElementById('restockModal').classList.add('show');
 }
 document.getElementById('restockForm').addEventListener('submit', async (e) => {
@@ -147,7 +148,7 @@ document.getElementById('restockForm').addEventListener('submit', async (e) => {
     await api(`/api/products/${id}/restock`, { method: 'POST', body: { qty: parseFloat(fd.get('qty')) } });
     document.getElementById('restockModal').classList.remove('show');
     toast('Stock updated');
-    loadProducts();
+    loadAll();
   } catch (err) { toast(err.message); }
 });
 
@@ -156,7 +157,7 @@ async function deleteProduct(id) {
   try {
     await api(`/api/products/${id}`, { method: 'DELETE' });
     toast('Product deleted');
-    loadProducts();
+    loadAll();
   } catch (err) { toast(err.message); }
 }
 

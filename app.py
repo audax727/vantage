@@ -351,9 +351,10 @@ def send_notification(user_id, kind, message, to_email=None):
             msg["Subject"] = "Payment Reminder — Vantage"
             msg["From"] = f"Vantage <{EMAIL_ADDRESS}>"
             msg["To"] = to_email
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
-                server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
-                server.sendmail(EMAIL_ADDRESS, [to_email], msg.as_string())
+            if False:
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                    server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
+                    server.sendmail(EMAIL_ADDRESS, [to_email], msg.as_string())
             channel = "email"
         except Exception as e:
             smtp_error = str(e) or "SMTP connection timed out. Render may be blocking port 465."
@@ -1592,7 +1593,7 @@ def api_analytics_ai_report():
         import requests
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         data = {
-            "model": "llama-3.1-8b-instant",
+            "model": "openai/gpt-oss-20b",
             "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": prompt}]
         }
@@ -1657,7 +1658,7 @@ def classify_query(question, api_key):
         import requests
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         data = {
-            "model": "llama-3.1-8b-instant",
+            "model": "openai/gpt-oss-20b",
             "response_format": {"type": "json_object"},
             "max_tokens": 50,
             "messages": [{"role": "user", "content": prompt}]
@@ -1706,7 +1707,7 @@ def api_analytics_ai_chat():
         import requests
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         data = {
-            "model": "llama-3.1-8b-instant",
+            "model": "openai/gpt-oss-20b",
             "max_tokens": 800,
             "messages": [
                 {"role": "system", "content": system_prompt},
