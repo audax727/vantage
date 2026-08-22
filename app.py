@@ -275,11 +275,28 @@ def init_db():
                 db_url += "?sslmode=require"
             elif "sslmode" not in db_url:
                 db_url += "&sslmode=require"
-            
+
             conn = psycopg2.connect(db_url)
             cur = conn.cursor()
-            cur.execute(SCHEMA)
-            conn.commit()
+
+            # Split SCHEMA into individual statements and run each separately.
+            # This ensures that a table added later (e.g. customer_reminders) is
+            # always created even if earlier tables already exist.
+            statements = [
+                s.strip() for s in SCHEMA.split(";") if s.strip()
+            ]
+            for stmt in statements:
+                try:
+                    cur.execute(stmt)
+                    conn.commit()
+                    # Extract table name for logging
+                    if "CREATE TABLE" in stmt.upper():
+                        tname = stmt.upper().split("EXISTS")[-1].strip().split("(")[0].strip().lower()
+                        print(f"  [init_db] OK: {tname}")
+                except Exception as e:
+                    conn.rollback()
+                    print(f"  [init_db] WARN (stmt skipped): {e}")
+
             conn.close()
             print("Postgres tables initialized successfully!")
         except Exception as e:
@@ -293,6 +310,7 @@ def init_db():
         cur.executescript(sqlite_schema)
         conn.commit()
         conn.close()
+
 
 # Initialize DB unconditionally so it runs on Gunicorn startup
 init_db()
