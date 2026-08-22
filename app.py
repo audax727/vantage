@@ -124,7 +124,7 @@ class DBWrapper:
 def get_db():
     if "db" not in g:
         if DATABASE_URL:
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
             g.db = DBWrapper(conn, is_postgres=True)
         else:
             DB_PATH = os.environ.get("DB_PATH", "vantage.db")
@@ -276,7 +276,7 @@ def init_db():
             elif "sslmode" not in db_url:
                 db_url += "&sslmode=require"
 
-            conn = psycopg2.connect(db_url)
+            conn = psycopg2.connect(db_url, connect_timeout=10)
             cur = conn.cursor()
 
             # Split SCHEMA into individual statements and run each separately.
@@ -1034,7 +1034,7 @@ REMINDER_MESSAGES = {
 def _get_scheduler_db():
     """Open a standalone DB connection for use outside the Flask app context."""
     if DATABASE_URL:
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require', connect_timeout=10)
         return DBWrapper(conn, is_postgres=True)
     else:
         DB_PATH = os.environ.get("DB_PATH", "vantage.db")
