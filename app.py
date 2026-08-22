@@ -597,18 +597,22 @@ def signup_page():
         return jsonify({"error": "Password must be at least 8 characters"}), 400
 
     db = get_db()
-    existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if existing:
-        return jsonify({"error": "An account with this email already exists"}), 409
+    try:
+        existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if existing:
+            return jsonify({"error": "An account with this email already exists"}), 409
 
-    pw_hash = generate_password_hash(password)
-    cur = db.execute(
-        "INSERT INTO users (email, password_hash, auth_provider, shop_name, created_at) VALUES (?,?,?,?,?) RETURNING id",
-        (email, pw_hash, "email", shop_name, datetime.utcnow().isoformat()),
-    )
-    user_id = cur.fetchone()["id"]
-    db.execute("INSERT INTO locations (user_id, name, is_default) VALUES (?,?,1)", (user_id, "Main Store"))
-    db.commit()
+        pw_hash = generate_password_hash(password)
+        cur = db.execute(
+            "INSERT INTO users (email, password_hash, auth_provider, shop_name, created_at) VALUES (?,?,?,?,?) RETURNING id",
+            (email, pw_hash, "email", shop_name, datetime.utcnow().isoformat()),
+        )
+        user_id = cur.fetchone()["id"]
+        db.execute("INSERT INTO locations (user_id, name, is_default) VALUES (?,?,1)", (user_id, "Main Store"))
+        db.commit()
+    except Exception as e:
+        logger.error(f"[signup] DB error: {e}", exc_info=True)
+        return jsonify({"error": f"Server error: {e}"}), 500
 
     session.permanent = True
     session["user_id"] = user_id
