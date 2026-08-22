@@ -1922,59 +1922,61 @@ def api_quotation_convert(quote_id):
 @login_required
 def seed_demo_data():
     """Populates the account with realistic sample data for demoing, clearing old data first."""
-    user_id = session["user_id"]
-    db = get_db()
-    
-    # Clear old data to make this idempotent
-    db.execute("DELETE FROM ledger_entries WHERE user_id=?", (user_id,))
-    db.execute("DELETE FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE user_id=?)", (user_id,))
-    db.execute("DELETE FROM sales WHERE user_id=?", (user_id,))
-    db.execute("DELETE FROM products WHERE user_id=?", (user_id,))
-    db.execute("DELETE FROM customers WHERE user_id=?", (user_id,))
-    db.commit()
-    
-    with open("seed_data.json", "r") as f:
-        data = json.load(f)
+    import traceback
+    try:
+        user_id = session["user_id"]
+        db = get_db()
         
-    product_map = {}
-    for p in data["products"]:
-        cur = db.execute(
-            "INSERT INTO products (user_id, name, category, cost_price, sell_price, current_stock, "
-            "reorder_threshold, unit, gst_rate, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
-            (user_id, p["name"], p["category"], p["cost_price"], p["sell_price"], p["start_stock"], p["threshold"], p["unit"], p.get("gst_rate", 18.0), datetime.utcnow().isoformat()),
-        )
-        product_map[p["name"]] = cur.fetchone()["id"]
-
-    customer_map = {}
-    for c in data["customers"]:
-        name, phone, email = c[0], c[1], c[2]
-        cur = db.execute(
-            "INSERT INTO customers (user_id, name, phone, email, created_at) VALUES (?,?,?,?,?) RETURNING id",
-            (user_id, name, phone, email, datetime.utcnow().isoformat()),
-        )
-        customer_map[name] = cur.fetchone()["id"]
+        # Clear old data to make this idempotent
+        db.execute("DELETE FROM ledger_entries WHERE user_id=?", (user_id,))
+        db.execute("DELETE FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE user_id=?)", (user_id,))
+        db.execute("DELETE FROM sales WHERE user_id=?", (user_id,))
+        db.execute("DELETE FROM products WHERE user_id=?", (user_id,))
+        db.execute("DELETE FROM customers WHERE user_id=?", (user_id,))
+        db.commit()
         
-    db.commit()
-
-    # Find the most recent sale date in the mock data
-    latest_mock_date = max(datetime.strptime(s["date"], "%Y-%m-%d %H:%M") for s in data["sales"])
-    time_shift = datetime.utcnow() - latest_mock_date
-
-    for s in data["sales"]:
-        cid = customer_map.get(s["customer"])
-        items = []
-        for it in s["items"]:
-            items.append({"product_id": product_map[it["name"]], "qty": it["qty"]})
+        with open("seed_data.json", "r") as f:
+            data = json.load(f)
             
-        mock_timestamp = datetime.strptime(s["date"], "%Y-%m-%d %H:%M")
-        shifted_timestamp = (mock_timestamp + time_shift).isoformat()
-        
-        try:
-            record_sale(user_id, cid, items, amount_paid=s["paid"], channel=s["channel"], timestamp=shifted_timestamp)
-        except Exception as e:
-            print(f"Skipping sale due to error: {e}")
+        product_map = {}
+        for p in data["products"]:
+            cur = db.execute(
+                "INSERT INTO products (user_id, name, category, cost_price, sell_price, current_stock, "
+                "reorder_threshold, unit, gst_rate, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+                (user_id, p["name"], p["category"], p["cost_price"], p["sell_price"], p["start_stock"], p["threshold"], p["unit"], p.get("gst_rate", 18.0), datetime.utcnow().isoformat()),
+            )
+            product_map[p["name"]] = cur.fetchone()["id"]
 
-    return jsonify({"ok": True, "message": "Demo data seeded with recent dates"})
+        customer_map = {}
+        for c in data["customers"]:
+            name, phone, email = c[0], c[1], c[2]
+            cur = db.execute(
+                "INSERT INTO customers (user_id, name, phone, email, created_at) VALUES (?,?,?,?,?) RETURNING id",
+                (user_id, name, phone, email, datetime.utcnow().isoformat()),
+            )
+            customer_map[name] = cur.fetchone()["id"]
+            
+        db.commit()
+
+        # Find the most recent sale date in the mock data
+        latest_mock_date = max(datetime.strptime(s["date"], "%Y-%m-%d %H:%M") for s in data["sales"])
+        time_shift = datetime.utcnow() - latest_mock_date
+
+        for s in data["sales"]:
+            cid = customer_map.get(s["customer"])
+            items = []
+            for it in s["items"]:
+                items.append({"product_id": product_map[it["name"]], "qty": it["qty"]})
+                
+            mock_timestamp = datetime.strptime(s["date"], "%Y-%m-%d %H:%M")
+            shifted_timestamp = (mock_timestamp + time_shift).isoformat()
+            
+            record_sale(user_id, cid, items, amount_paid=s["paid"], channel=s["channel"], timestamp=shifted_timestamp)
+
+        return jsonify({"ok": True, "message": "Demo data loaded successfully!"})
+    except Exception as e:
+        db.conn.rollback() # Ensure rollback on error
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 # ----------------------------------------------------------------------------
