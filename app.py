@@ -1566,6 +1566,19 @@ def get_business_context(user_id, days=None):
     return context
 
 
+def parse_json_from_llm(content):
+    import json
+    text = content.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    return json.loads(text)
+
+
 @app.route("/api/analytics/ai_report", methods=["GET"])
 @login_required
 def api_analytics_ai_report():
@@ -1593,14 +1606,19 @@ def api_analytics_ai_report():
         import requests
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         data = {
-            "model": "openai/gpt-oss-20b",
+            "model": "groq/compound-mini",
             "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": prompt}]
         }
         r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=20)
         r.raise_for_status()
         content = r.json()["choices"][0]["message"]["content"]
-        return content, 200, {'Content-Type': 'application/json'}
+        try:
+            parsed = parse_json_from_llm(content)
+            return jsonify(parsed)
+        except Exception as parse_err:
+            print(f"Failed to parse LLM JSON response: {parse_err}. Raw content: {content}")
+            return content, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         print(f"ai_report error: {e}")
         return jsonify({"error": str(e)}), 500
@@ -1658,7 +1676,7 @@ def classify_query(question, api_key):
         import requests
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         data = {
-            "model": "openai/gpt-oss-20b",
+            "model": "groq/compound-mini",
             "response_format": {"type": "json_object"},
             "max_tokens": 50,
             "messages": [{"role": "user", "content": prompt}]
@@ -1666,7 +1684,7 @@ def classify_query(question, api_key):
         r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data, timeout=10)
         r.raise_for_status()
         content = r.json()["choices"][0]["message"]["content"]
-        result = json.loads(content)
+        result = parse_json_from_llm(content)
         return result.get("classification", "BUSINESS_ONLY").upper()
     except Exception as e:
         print(f"classify_query error: {e}")
@@ -1707,7 +1725,7 @@ def api_analytics_ai_chat():
         import requests
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         data = {
-            "model": "openai/gpt-oss-20b",
+            "model": "groq/compound-mini",
             "max_tokens": 800,
             "messages": [
                 {"role": "system", "content": system_prompt},

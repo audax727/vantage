@@ -6,7 +6,7 @@ try:
     from groq import Groq
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     resp = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="groq/compound-mini",
         messages=[{"role": "user", "content": "hi"}]
     )
     print("SUCCESS")
