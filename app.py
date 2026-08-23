@@ -1686,6 +1686,9 @@ def classify_query(question, api_key):
         content = r.json()["choices"][0]["message"]["content"]
         result = parse_json_from_llm(content)
         return result.get("classification", "BUSINESS_ONLY").upper()
+    except requests.exceptions.HTTPError as e:
+        print(f"classify_query HTTP error: {e.response.text}")
+        return "BUSINESS_ONLY"
     except Exception as e:
         print(f"classify_query error: {e}")
         # Default to BUSINESS_ONLY on failure — never silently block the user
@@ -1736,6 +1739,10 @@ def api_analytics_ai_chat():
         r.raise_for_status()
         content = r.json()["choices"][0]["message"]["content"]
         return jsonify({"answer": content})
+    except requests.exceptions.HTTPError as e:
+        err_msg = f"ai_chat HTTP error: {e.response.text}"
+        print(err_msg)
+        return jsonify({"error": err_msg}), 500
     except Exception as e:
         print(f"ai_chat error: {e}")
         return jsonify({"error": str(e)}), 500
