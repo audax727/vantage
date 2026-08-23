@@ -676,7 +676,7 @@ def google_callback():
 @app.route("/logout")
 def logout():
     session.pop("user_id", None)
-    return redirect(url_for("login_page"))
+    return redirect(url_for("home"))
 
 
 @app.route("/api/settings", methods=["POST"])
